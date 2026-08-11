@@ -82,11 +82,13 @@ export function StaffCard({ member }: { member: StaffMember }) {
           </span>
         </div>
 
-        <h3 className="mt-6 text-xl">{member.name}</h3>
+        <h3 className="mt-6 text-xl font-bold text-foreground">{member.name}</h3>
         {member.handle ? (
-          <p className="mt-1 text-xs tracking-wide text-muted-foreground">{member.handle}</p>
+          <p className="mt-0.5 text-xs font-mono font-semibold tracking-wide text-rose-500/90">
+            {member.handle.startsWith("@") ? member.handle : `@${member.handle}`}
+          </p>
         ) : null}
-        <p className="mt-3 text-sm text-primary">{member.role}</p>
+        <p className="mt-2 text-sm font-medium text-primary">{member.role}</p>
         <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{member.bio}</p>
 
         {member.tags?.length ? (

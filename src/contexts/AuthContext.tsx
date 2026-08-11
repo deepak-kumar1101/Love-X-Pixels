@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import type { User } from "firebase/auth";
+import type { User } from "@supabase/supabase-js";
 import { AuthService } from "@/services/auth.service";
 import type { UserProfile } from "@/models/user.model";
 
@@ -7,7 +7,7 @@ interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
-  signInWithDiscord: () => Promise<User>;
+  signInWithDiscord: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -19,8 +19,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = AuthService.onAuthChange((fbUser, profile) => {
-      setUser(fbUser);
+    const unsubscribe = AuthService.onAuthChange((sbUser, profile) => {
+      setUser(sbUser);
       setUserProfile(profile);
       setLoading(false);
     });

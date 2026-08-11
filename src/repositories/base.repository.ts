@@ -1,24 +1,4 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  addDoc,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  onSnapshot,
-  query,
-  where,
-  orderBy,
-  limit,
-  startAfter,
-  type DocumentData,
-  type QueryConstraint,
-  type QueryDocumentSnapshot,
-} from "firebase/firestore";
-import { db, isFirebaseConfigured } from "@/lib/firebase/config";
-import { withRetry, parseFirebaseError, type AppError } from "@/lib/firebase/error-handler";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export abstract class BaseRepository<T extends { id: string }> {
   protected collectionName: string;
@@ -28,26 +8,29 @@ export abstract class BaseRepository<T extends { id: string }> {
     this.collectionName = collectionName;
   }
 
+  /** Convert collectionName (e.g. winnerAnnouncements) to postgres snake_case (e.g. winner_announcements) */
+  protected get tableName(): string {
+    return this.collectionName.replace(/([A-Z])/g, "_$1").toLowerCase();
+  }
+
   /** Read all documents with offline fallback and in-memory cache */
   async getAll(fallbackData: T[] = []): Promise<T[]> {
-    if (!db || !isFirebaseConfigured) {
+    if (!isSupabaseConfigured) {
       return fallbackData;
     }
     try {
-      return await withRetry(async () => {
-        const colRef = collection(db!, this.collectionName);
-        const snapshot = await getDocs(colRef);
-        if (snapshot.empty) return fallbackData;
-
-        const items: T[] = snapshot.docs.map((docSnap) => {
-          const item = { id: docSnap.id, ...(docSnap.data() as Omit<T, "id">) } as T;
-          this.cache.set(docSnap.id, item);
-          return item;
-        });
-        return items;
+      const { data, error } = await supabase.from(this.tableName).select("*");
+      if (error || !data || data.length === 0) {
+        return fallbackData;
+      }
+      const items = data.map((item) => {
+        const obj = { id: item.id, ...item } as T;
+        this.cache.set(item.id, obj);
+        return obj;
       });
+      return items;
     } catch (err) {
-      console.warn(`[BaseRepository] Error fetching ${this.collectionName}, using fallback:`, err);
+      console.warn(`[BaseRepository] Error fetching ${this.tableName}, using fallback:`, err);
       return fallbackData;
     }
   }
@@ -57,152 +40,86 @@ export abstract class BaseRepository<T extends { id: string }> {
     if (this.cache.has(id)) {
       return this.cache.get(id)!;
     }
-    if (!db || !isFirebaseConfigured) {
+    if (!isSupabaseConfigured) {
       return null;
     }
     try {
-      return await withRetry(async () => {
-        const docRef = doc(db!, this.collectionName, id);
-        const snapshot = await getDoc(docRef);
-        if (!snapshot.exists()) return null;
+      const { data, error } = await supabase
+        .from(this.tableName)
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
 
-        const item = { id: snapshot.id, ...(snapshot.data() as Omit<T, "id">) } as T;
-        this.cache.set(id, item);
-        return item;
-      });
+      if (error || !data) return null;
+      const item = { id: data.id, ...data } as T;
+      this.cache.set(id, item);
+      return item;
     } catch (err) {
-      throw parseFirebaseError(err);
+      console.warn(`[BaseRepository] Error getting item ${id}:`, err);
+      return null;
     }
   }
 
   /** Create new document */
   async add(item: Omit<T, "id">, customId?: string): Promise<string> {
-    if (!db || !isFirebaseConfigured) {
-      const generatedId = customId || "demo-" + Date.now();
-      const mockItem = { id: generatedId, ...item } as unknown as T;
-      this.cache.set(generatedId, mockItem);
-      return generatedId;
+    const generatedId = customId || crypto.randomUUID();
+    const payload = { id: generatedId, ...item };
+
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from(this.tableName).insert(payload);
+      if (error)
+        console.warn(`[BaseRepository] Error inserting into ${this.tableName}:`, error.message);
     }
-    try {
-      return await withRetry(async () => {
-        if (customId) {
-          const docRef = doc(db!, this.collectionName, customId);
-          await setDoc(docRef, item as DocumentData);
-          this.cache.set(customId, { id: customId, ...item } as unknown as T);
-          return customId;
-        } else {
-          const colRef = collection(db!, this.collectionName);
-          const docRef = await addDoc(colRef, item as DocumentData);
-          this.cache.set(docRef.id, { id: docRef.id, ...item } as unknown as T);
-          return docRef.id;
-        }
-      });
-    } catch (err) {
-      throw parseFirebaseError(err);
-    }
+
+    const mockItem = payload as unknown as T;
+    this.cache.set(generatedId, mockItem);
+    return generatedId;
   }
 
   /** Update document */
   async update(id: string, data: Partial<Omit<T, "id">>): Promise<void> {
-    if (!db || !isFirebaseConfigured) {
-      if (this.cache.has(id)) {
-        this.cache.set(id, { ...this.cache.get(id)!, ...data });
-      }
-      return;
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from(this.tableName).update(data).eq("id", id);
+      if (error)
+        console.warn(`[BaseRepository] Error updating ${id} in ${this.tableName}:`, error.message);
     }
-    try {
-      await withRetry(async () => {
-        const docRef = doc(db!, this.collectionName, id);
-        await updateDoc(docRef, data as DocumentData);
-        if (this.cache.has(id)) {
-          this.cache.set(id, { ...this.cache.get(id)!, ...data });
-        }
-      });
-    } catch (err) {
-      throw parseFirebaseError(err);
+    if (this.cache.has(id)) {
+      this.cache.set(id, { ...this.cache.get(id)!, ...data });
     }
   }
 
   /** Delete document */
   async delete(id: string): Promise<void> {
-    if (!db || !isFirebaseConfigured) {
-      this.cache.delete(id);
-      return;
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from(this.tableName).delete().eq("id", id);
+      if (error)
+        console.warn(
+          `[BaseRepository] Error deleting ${id} from ${this.tableName}:`,
+          error.message,
+        );
     }
-    try {
-      await withRetry(async () => {
-        const docRef = doc(db!, this.collectionName, id);
-        await deleteDoc(docRef);
-        this.cache.delete(id);
-      });
-    } catch (err) {
-      throw parseFirebaseError(err);
-    }
+    this.cache.delete(id);
   }
 
-  /** Firestore Realtime Snapshot Listener */
-  subscribe(
-    fallbackData: T[],
-    onNext: (data: T[]) => void,
-    onError?: (error: AppError) => void,
-  ): () => void {
-    if (!db || !isFirebaseConfigured) {
-      onNext(fallbackData);
+  /** Real-time Channel Listener for Supabase PostgreSQL */
+  subscribe(fallbackData: T[], onNext: (data: T[]) => void): () => void {
+    // Initial fetch
+    this.getAll(fallbackData).then((data) => onNext(data));
+
+    if (!isSupabaseConfigured) {
       return () => {};
     }
 
-    try {
-      const colRef = collection(db, this.collectionName);
-      return onSnapshot(
-        colRef,
-        (snapshot) => {
-          if (snapshot.empty) {
-            onNext(fallbackData);
-            return;
-          }
-          const items: T[] = snapshot.docs.map((docSnap) => {
-            const item = { id: docSnap.id, ...(docSnap.data() as Omit<T, "id">) } as T;
-            this.cache.set(docSnap.id, item);
-            return item;
-          });
-          onNext(items);
-        },
-        (err) => {
-          const parsed = parseFirebaseError(err);
-          console.warn(
-            `[BaseRepository] Listener warning for ${this.collectionName}:`,
-            parsed.message,
-          );
-          if (onError) onError(parsed);
-          onNext(fallbackData);
-        },
-      );
-    } catch (err) {
-      if (onError) onError(parseFirebaseError(err));
-      onNext(fallbackData);
-      return () => {};
-    }
-  }
+    const channel = supabase
+      .channel(`public:${this.tableName}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: this.tableName }, async () => {
+        const freshData = await this.getAll(fallbackData);
+        onNext(freshData);
+      })
+      .subscribe();
 
-  /** Query documents with filters */
-  async queryWhere(
-    field: string,
-    op: "==" | "<" | "<=" | ">" | ">=" | "array-contains",
-    value: unknown,
-  ): Promise<T[]> {
-    if (!db || !isFirebaseConfigured) return [];
-    try {
-      return await withRetry(async () => {
-        const colRef = collection(db!, this.collectionName);
-        const q = query(colRef, where(field, op, value));
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map((docSnap) => ({
-          id: docSnap.id,
-          ...(docSnap.data() as Omit<T, "id">),
-        })) as T[];
-      });
-    } catch (err) {
-      throw parseFirebaseError(err);
-    }
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }
 }

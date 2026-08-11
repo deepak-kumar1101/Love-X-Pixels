@@ -7,7 +7,9 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 export default defineConfig({
   plugins: [
     tanstackStart({
-      server: { entry: "server" },
+      router: { entry: "router.tsx" },
+      client: { entry: "client.tsx" },
+      server: { entry: "server.ts" },
     }),
     react(),
     tailwindcss(),

@@ -9,6 +9,8 @@ export interface ExtendedCommunityEvent extends CommunityEvent {
   isPinned?: boolean;
   isFeatured?: boolean;
   registrationOpen?: boolean;
+  autoSelectWinner?: boolean;
+  autoSelectedWinnerDone?: boolean;
   winnerId?: string;
   winnerName?: string;
   winnerAvatar?: string;

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Flower2, Gem, Heart, Moon, Sparkles, Star } from "lucide-react";
+import { toast } from "sonner";
 
 import { PageHeader } from "@/components/site/PageHeader";
 import { Reveal } from "@/components/site/Reveal";
@@ -218,7 +219,9 @@ function CommunityPage() {
                     automatically!
                   </p>
                   <button
-                    onClick={() => alert("You have entered the Discord Nitro Giveaway! Good luck!")}
+                    onClick={() =>
+                      toast.success("🎉 You have entered the Discord Nitro Giveaway! Good luck!")
+                    }
                     className="mt-3 w-full rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 py-2 text-xs font-semibold text-white shadow-xs hover:opacity-90"
                   >
                     Enter Giveaway

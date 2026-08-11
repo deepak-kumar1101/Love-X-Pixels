@@ -39,10 +39,10 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const [winners, setWinners] = useState<PayoutWinner[]>(payoutWinners);
+  const [winners, setWinners] = useState<PayoutWinner[]>([]);
 
   useEffect(() => {
-    const unsub = subscribeToCollection<PayoutWinner>("payouts", payoutWinners, setWinners);
+    const unsub = subscribeToCollection<PayoutWinner>("payouts", [], setWinners);
     return () => unsub();
   }, []);
 

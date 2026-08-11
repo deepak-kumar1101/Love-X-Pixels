@@ -19,16 +19,23 @@ export class EventLifecycleService {
   /** Register user for an event with slot check, duplicate check, and XP reward */
   static async registerParticipant(
     event: ExtendedCommunityEvent,
-    user: { uid: string; displayName?: string; email?: string; photoURL?: string },
+    user: {
+      uid?: string;
+      id?: string;
+      displayName?: string;
+      email?: string;
+      photoURL?: string;
+      user_metadata?: Record<string, unknown>;
+    },
   ): Promise<{ success: boolean; message: string }> {
-    if (!user || !user.uid) {
+    const discordId = user?.uid || user?.id;
+    if (!user || !discordId) {
       return { success: false, message: "Authentication required. Please sign in with Discord." };
     }
 
-    const discordId = user.uid;
     const isAlready = await participantRepository.isUserRegistered(event.id, discordId);
     if (isAlready) {
-      return { success: false, message: "You are already registered for this event." };
+      return { success: false, message: "You are already registered for this event!" };
     }
 
     const maxSlots = event.maxSlots || event.capacity || 50;
@@ -39,13 +46,23 @@ export class EventLifecycleService {
       return { success: false, message: "Registration is full for this event." };
     }
 
+    const displayName =
+      user.displayName ||
+      (user.user_metadata?.full_name as string) ||
+      (user.user_metadata?.name as string) ||
+      (user.user_metadata?.preferred_username as string) ||
+      user.email?.split("@")[0] ||
+      "Participant";
+
+    const avatar = user.photoURL || (user.user_metadata?.avatar_url as string) || undefined;
+
     // Register participant
     const participantData: Omit<EventParticipant, "id"> = {
       eventId: event.id,
       discordId,
-      username: user.email?.split("@")[0] || user.displayName || "Participant",
-      displayName: user.displayName || "Participant",
-      avatar: user.photoURL || undefined,
+      username: user.email?.split("@")[0] || displayName,
+      displayName,
+      avatar,
       joinedAt: new Date().toISOString(),
       status: "registered",
     };

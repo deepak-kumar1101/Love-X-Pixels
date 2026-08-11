@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { toast } from "sonner";
 
 import { EventCard } from "@/components/site/EventCard";
 import { PageHeader } from "@/components/site/PageHeader";
@@ -36,10 +37,9 @@ export const Route = createFileRoute("/events")({
 
 function EventsPage() {
   const { user } = useAuth();
-  const [eventsList, setEventsList] = useState<ExtendedCommunityEvent[]>(
-    communityEvents as ExtendedCommunityEvent[],
-  );
+  const [eventsList, setEventsList] = useState<ExtendedCommunityEvent[]>([]);
   const [announcements, setAnnouncements] = useState<WinnerAnnouncement[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"all" | "live" | "upcoming" | "past">("all");
 
   const [selectedEvent, setSelectedEvent] = useState<ExtendedCommunityEvent | null>(null);
@@ -48,11 +48,10 @@ function EventsPage() {
   const [isClaimOpen, setIsClaimOpen] = useState(false);
 
   useEffect(() => {
-    const unsubEvents = subscribeToCollection<ExtendedCommunityEvent>(
-      "events",
-      communityEvents as ExtendedCommunityEvent[],
-      setEventsList,
-    );
+    const unsubEvents = subscribeToCollection<ExtendedCommunityEvent>("events", [], (list) => {
+      setEventsList(list);
+      setIsLoading(false);
+    });
     const unsubAnnounce = subscribeToCollection<WinnerAnnouncement>(
       "winnerAnnouncements",
       [],
@@ -71,19 +70,24 @@ function EventsPage() {
 
   const handleParticipate = async (event: ExtendedCommunityEvent) => {
     if (!user) {
-      alert("Discord authentication required. Please sign in via the Login button.");
+      toast.error("Discord login required! Please click Sign In with Discord first.");
       return;
     }
     const result = await EventLifecycleService.registerParticipant(event, user);
-    alert(result.message);
+    if (result.success) {
+      toast.success(result.message);
+    } else {
+      toast.info(result.message);
+    }
   };
 
   const handleNotify = async (event: ExtendedCommunityEvent) => {
     if (!user) {
-      alert("Please sign in to subscribe to event notifications.");
+      toast.error("Please sign in with Discord to subscribe to event notifications.");
       return;
     }
     await EventLifecycleService.subscribeEventNotification(event.id, user);
+    toast.success("🔔 Subscribed! You will be notified when this event goes live.");
   };
 
   // Classify events based on current time

@@ -64,12 +64,12 @@ const rankGroups: { rank: StaffRank; title: string; description: string; columns
 ];
 
 function StaffPage() {
-  const [list, setList] = useState<StaffMember[]>(staffMembers);
+  const [list, setList] = useState<StaffMember[]>([]);
   const [applicantHandle, setApplicantHandle] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
-    const unsub = subscribeToCollection<StaffMember>("staff", staffMembers, setList);
+    const unsub = subscribeToCollection<StaffMember>("staff", [], setList);
     return () => unsub();
   }, []);
 

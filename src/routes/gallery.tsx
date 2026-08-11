@@ -29,13 +29,13 @@ export const Route = createFileRoute("/gallery")({
 });
 
 function GalleryPage() {
-  const [items, setItems] = useState<GalleryItem[]>(galleryItems);
+  const [items, setItems] = useState<GalleryItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [lightboxCaption, setLightboxCaption] = useState<string | undefined>();
 
   useEffect(() => {
-    const unsub = subscribeToCollection<GalleryItem>("gallery", galleryItems, setItems);
+    const unsub = subscribeToCollection<GalleryItem>("gallery", [], setItems);
     return () => unsub();
   }, []);
 
@@ -121,8 +121,8 @@ function GalleryPage() {
             </h2>
             <p className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-muted-foreground">
               Share your photography, vector art, writing clips or game moments in{" "}
-              <code className="rounded bg-rose-500/10 px-2 py-1 text-rose-500">#media-gallery</code>{" "}
-              on Discord.
+              <code className="rounded bg-rose-500/10 px-2 py-1 text-rose-500">・🍁┆media</code> on
+              Discord.
             </p>
           </div>
         </Reveal>

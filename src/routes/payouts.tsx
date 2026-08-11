@@ -45,8 +45,8 @@ export const Route = createFileRoute("/payouts")({
 });
 
 export function PayoutsPage() {
-  const [winners, setWinners] = useState<PayoutWinner[]>(payoutWinners);
-  const [reviews, setReviews] = useState<PayoutReview[]>(payoutReviews);
+  const [winners, setWinners] = useState<PayoutWinner[]>([]);
+  const [reviews, setReviews] = useState<PayoutReview[]>([]);
   const [announcements, setAnnouncements] = useState<WinnerAnnouncement[]>([]);
 
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
@@ -55,10 +55,10 @@ export function PayoutsPage() {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubWinners = subscribeToCollection<PayoutWinner>("payouts", payoutWinners, setWinners);
-    const unsubReviews = subscribeToCollection<PayoutReview>("reviews", payoutReviews, (all) => {
+    const unsubWinners = subscribeToCollection<PayoutWinner>("payouts", [], setWinners);
+    const unsubReviews = subscribeToCollection<PayoutReview>("reviews", [], (all) => {
       const approved = all.filter((r) => r.approved !== false);
-      setReviews(approved.length > 0 ? approved : payoutReviews);
+      setReviews(approved);
     });
     const unsubAnnouncements = subscribeToCollection<WinnerAnnouncement>(
       "winnerAnnouncements",

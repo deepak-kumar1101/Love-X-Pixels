@@ -30,10 +30,10 @@ export const Route = createFileRoute("/partners")({
 });
 
 function PartnersPage() {
-  const [list, setList] = useState<Partner[]>(partners);
+  const [list, setList] = useState<Partner[]>([]);
 
   useEffect(() => {
-    const unsub = subscribeToCollection<Partner>("partners", partners, setList);
+    const unsub = subscribeToCollection<Partner>("partners", [], setList);
     return () => unsub();
   }, []);
 
