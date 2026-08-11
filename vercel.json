@@ -1,14 +1,12 @@
 {
   "version": 2,
   "buildCommand": "npm run build",
-  "routes": [
+  "outputDirectory": "dist/client",
+  "cleanUrls": true,
+  "rewrites": [
     {
-      "src": "/assets/(.*)",
-      "dest": "/dist/client/assets/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/api/index"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
