@@ -1,0 +1,46 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Helper functions
+    function isValidImage() {
+      return request.resource.contentType.matches('image/.*')
+        && request.resource.size <= 10 * 1024 * 1024; // 10MB max
+    }
+
+    function isAdmin() {
+      return request.auth != null;
+    }
+
+    // Public read for all images
+    match /{allPaths=**} {
+      allow read: if true;
+    }
+
+    // Enforce folder upload restrictions
+    match /hero/{fileName} {
+      allow write: if isAdmin() && isValidImage();
+    }
+    match /gallery/{fileName} {
+      allow write: if isAdmin() && isValidImage();
+    }
+    match /staff/{fileName} {
+      allow write: if isAdmin() && isValidImage();
+    }
+    match /partners/{fileName} {
+      allow write: if isAdmin() && isValidImage();
+    }
+    match /events/{fileName} {
+      allow write: if isAdmin() && isValidImage();
+    }
+    match /winners/{fileName} {
+      allow write: if isAdmin() && isValidImage();
+    }
+    match /reviews/{fileName} {
+      allow write: if isValidImage();
+    }
+    match /avatars/{fileName} {
+      allow write: if request.auth != null && isValidImage();
+    }
+  }
+}

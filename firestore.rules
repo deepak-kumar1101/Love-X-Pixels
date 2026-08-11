@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      return isAuthenticated() && role in getUserData().roles;
+    }
+
+    function isOwner() {
+      return hasRole('Owner');
+    }
+
+    function isAdmin() {
+      return isOwner() || hasRole('CoOwner') || hasRole('Admin');
+    }
+
+    function isModerator() {
+      return isAdmin() || hasRole('Moderator');
+    }
+
+    // Public read for website content
+    match /homepage/{docId} { allow read: if true; allow write: if isAdmin(); }
+    match /settings/{docId} { allow read: if true; allow write: if isOwner(); }
+    match /staff/{docId} { allow read: if true; allow write: if isAdmin(); }
+    match /events/{docId} { allow read: if true; allow write: if isAdmin(); }
+    match /gallery/{docId} { allow read: if true; allow write: if isAdmin(); }
+    match /partners/{docId} { allow read: if true; allow write: if isAdmin(); }
+    match /winners/{docId} { allow read: if true; allow write: if isAdmin(); }
+    match /payouts/{docId} { allow read: if true; allow write: if isAdmin(); }
+    match /statistics/{docId} { allow read: if true; allow write: if isAdmin(); }
+    match /notifications/{docId} { allow read: if true; allow write: if isModerator(); }
+
+    // User profiles
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isOwner();
+    }
+
+    // User Submitted Reviews (Pending approval)
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if request.resource.data.approved == false;
+      allow update, delete: if isModerator();
+    }
+
+    // Analytics & Visitor Logs
+    match /visitorLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if true; // Public logging allowed
+      allow update, delete: if isOwner();
+    }
+
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if isOwner();
+    }
+  }
+}
