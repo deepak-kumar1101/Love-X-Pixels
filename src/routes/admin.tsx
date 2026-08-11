@@ -107,7 +107,7 @@ export const Route = createFileRoute("/admin")({
   component: AdminDashboard,
 });
 
-export function AdminDashboard() {
+function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passcode, setPasscode] = useState("");
   const [authError, setAuthError] = useState("");

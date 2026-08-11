@@ -21,7 +21,7 @@ export default defineConfig({
           if (id.includes("node_modules")) {
             if (id.includes("lucide-react")) return "vendor-icons";
             if (id.includes("@supabase")) return "vendor-supabase";
-            if (id.includes("framer-motion")) return "vendor-motion";
+            if (id.includes("motion")) return "vendor-motion";
             if (id.includes("@tanstack")) return "vendor-router";
           }
         },
