@@ -10,13 +10,8 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import {
-  communityEvents,
-  staffMembers,
-  galleryItems,
-  payoutWinners,
-  payoutReviews,
-} from "@/content/placeholders";
+import { subscribeToCollection } from "@/lib/firebase";
+import type { CommunityEvent, StaffMember, GalleryItem, PayoutWinner, PayoutReview } from "@/types/content";
 
 interface GlobalSearchModalProps {
   isOpen: boolean;
@@ -25,6 +20,28 @@ interface GlobalSearchModalProps {
 
 export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, onClose }) => {
   const [query, setQuery] = useState("");
+
+  const [events, setEvents] = useState<CommunityEvent[]>([]);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [winners, setWinners] = useState<PayoutWinner[]>([]);
+  const [reviews, setReviews] = useState<PayoutReview[]>([]);
+
+  useEffect(() => {
+    const unsubEvents = subscribeToCollection<CommunityEvent>("events", [], setEvents);
+    const unsubStaff = subscribeToCollection<StaffMember>("staff", [], setStaff);
+    const unsubGallery = subscribeToCollection<GalleryItem>("gallery", [], setGallery);
+    const unsubWinners = subscribeToCollection<PayoutWinner>("payouts", [], setWinners);
+    const unsubReviews = subscribeToCollection<PayoutReview>("reviews", [], setReviews);
+
+    return () => {
+      unsubEvents();
+      unsubStaff();
+      unsubGallery();
+      unsubWinners();
+      unsubReviews();
+    };
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -39,23 +56,23 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
 
   if (!isOpen) return null;
 
-  const filteredEvents = communityEvents.filter(
+  const filteredEvents = events.filter(
     (e) =>
       e.title.toLowerCase().includes(query.toLowerCase()) ||
       e.description.toLowerCase().includes(query.toLowerCase()),
   );
 
-  const filteredStaff = staffMembers.filter(
+  const filteredStaff = staff.filter(
     (s) =>
       s.name.toLowerCase().includes(query.toLowerCase()) ||
       s.role.toLowerCase().includes(query.toLowerCase()),
   );
 
-  const filteredGallery = galleryItems.filter((g) =>
-    (g.caption || g.alt).toLowerCase().includes(query.toLowerCase()),
+  const filteredGallery = gallery.filter((g) =>
+    (g.caption || g.alt || "").toLowerCase().includes(query.toLowerCase()),
   );
 
-  const filteredWinners = payoutWinners.filter(
+  const filteredWinners = winners.filter(
     (w) =>
       w.name.toLowerCase().includes(query.toLowerCase()) ||
       w.reason.toLowerCase().includes(query.toLowerCase()),

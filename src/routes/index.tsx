@@ -17,7 +17,7 @@ import {
   payoutWinners,
 } from "@/content/placeholders";
 import { subscribeToCollection } from "@/lib/firebase";
-import type { PayoutWinner } from "@/types/content";
+import type { PayoutWinner, GalleryItem } from "@/types/content";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -40,10 +40,15 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const [winners, setWinners] = useState<PayoutWinner[]>([]);
+  const [gallery, setGallery] = useState<GalleryItem[]>([]);
 
   useEffect(() => {
-    const unsub = subscribeToCollection<PayoutWinner>("payouts", [], setWinners);
-    return () => unsub();
+    const unsubWinners = subscribeToCollection<PayoutWinner>("payouts", [], setWinners);
+    const unsubGallery = subscribeToCollection<GalleryItem>("gallery", [], setGallery);
+    return () => {
+      unsubWinners();
+      unsubGallery();
+    };
   }, []);
 
   return (
@@ -107,7 +112,7 @@ function Index() {
           />
           <Reveal delay={0.1}>
             <div className="grid grid-cols-2 gap-4">
-              {galleryItems.slice(0, 4).map((item, i) => (
+              {gallery.slice(0, 4).map((item, i) => (
                 <Parallax key={item.id} distance={i % 2 === 0 ? 44 : 20}>
                   <div className="overflow-hidden rounded-3xl border border-border/70">
                     <img
