@@ -8,8 +8,8 @@ export class EventAutomationService {
   static calculateEventStatus(
     event: CommunityEvent,
     now: Date = new Date(),
-  ): "upcoming" | "live" | "past" {
-    if (!event.startsAt) return event.status || "upcoming";
+  ): ExtendedCommunityEvent["status"] {
+    if (!event.startsAt) return (event.status as ExtendedCommunityEvent["status"]) || "upcoming";
 
     const startTime = new Date(event.startsAt).getTime();
     const endTime = event.endsAt

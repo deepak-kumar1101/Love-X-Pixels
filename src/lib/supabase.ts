@@ -1,11 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 
 // Retrieve environment variables and sanitize base project URL
-const rawUrl = import.meta.env.VITE_SUPABASE_URL || "https://cxixjiktphvzewadanur.supabase.co";
+const rawUrl = import.meta.env.VITE_SUPABASE_URL ?? "";
 const SUPABASE_URL = rawUrl.replace(/\/auth\/v1\/callback\/?$/, "").replace(/\/$/, "");
-const SUPABASE_ANON_KEY =
-  import.meta.env.VITE_SUPABASE_ANON_KEY ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4aXhqaWt0cGh2emV3YWRhbnVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDI0NzEsImV4cCI6MjEwMjAxODQ3MX0.pNUOnKNLZxg_s9wTZOMSl9gqexU6lctpDQsNPuWM1Q0";
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
 
 export const isSupabaseConfigured =
   Boolean(import.meta.env.VITE_SUPABASE_URL) && Boolean(import.meta.env.VITE_SUPABASE_ANON_KEY);
@@ -28,16 +26,18 @@ export function subscribeToTable<T>(
   supabase
     .from(table)
     .select("*")
-    .then(({ data, error }) => {
-      if (error || !data || data.length === 0) {
+    .then(
+      ({ data, error }) => {
+        if (error || !data || data.length === 0) {
+          onData(fallbackData);
+        } else {
+          onData(data as unknown as T[]);
+        }
+      },
+      () => {
         onData(fallbackData);
-      } else {
-        onData(data as unknown as T[]);
-      }
-    })
-    .catch(() => {
-      onData(fallbackData);
-    });
+      },
+    );
 
   // Subscribe to real-time changes
   const channel = supabase

@@ -1,5 +1,12 @@
 import { userRepository } from "@/repositories/user.repository";
-import { placeholders } from "@/content/placeholders";
+import {
+  staffMembers,
+  communityEvents,
+  partners,
+  payoutWinners,
+  payoutReviews,
+  galleryItems,
+} from "@/content/placeholders";
 
 export class BackupService {
   /** Create complete JSON snapshot backup of website collections */
@@ -8,12 +15,12 @@ export class BackupService {
       timestamp: new Date().toISOString(),
       version: "1.0.0",
       content: {
-        staff: placeholders.staffMembers,
-        events: placeholders.communityEvents,
-        partners: placeholders.partners,
-        winners: placeholders.payoutWinners,
-        reviews: placeholders.payoutReviews,
-        gallery: placeholders.galleryItems,
+        staff: staffMembers,
+        events: communityEvents,
+        partners: partners,
+        winners: payoutWinners,
+        reviews: payoutReviews,
+        gallery: galleryItems,
       },
     };
 

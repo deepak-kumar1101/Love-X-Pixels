@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { UserProfile } from "@/models/user.model";
+import type { UserRole } from "@/models/rbac.model";
 import type { User } from "@supabase/supabase-js";
 
 /** Helper to detect if a Discord user is an Admin (e.g. nyx_str, w.arch, or admin email) */
@@ -12,11 +13,11 @@ export function isTargetAdminUser(user: User, username?: string, email?: string)
     (import.meta.env.VITE_ADMIN_EMAIL || "").toLowerCase().trim(),
   ].filter(Boolean);
 
+  const meta = user.user_metadata || {};
   const metaName = (
-    user.user_metadata?.preferred_username ||
-    user.user_metadata?.full_name ||
-    user.user_metadata?.name ||
-    user.user_metadata?.custom_claims?.global_name ||
+    (meta["preferred_username"] as string | undefined) ||
+    (meta["full_name"] as string | undefined) ||
+    (meta["name"] as string | undefined) ||
     ""
   ).toLowerCase();
   const userEmail = (email || user.email || "").toLowerCase();
@@ -63,17 +64,19 @@ export class AuthService {
               .eq("id", user.id);
           }
 
+          const userMeta = user.user_metadata || {};
           profile = {
+            id: user.id,
             uid: user.id,
             displayName: existingProfile.display_name || "Discord Member",
             username: existingProfile.username || `discord_${user.id.slice(0, 6)}`,
             email: user.email || "",
-            avatar: existingProfile.avatar_url || user.user_metadata?.avatar_url,
+            avatar: existingProfile.avatar_url || (userMeta["avatar_url"] as string | undefined),
             joinedAt: existingProfile.created_at,
             lastLogin: new Date().toISOString(),
-            roles: isAdmin
+            roles: (isAdmin
               ? Array.from(new Set([...currentRoles, "Owner", "Admin", "Member"]))
-              : currentRoles,
+              : currentRoles) as UserRole[],
             isVerified: true,
             isBanned: existingProfile.is_banned || false,
             isMuted: false,
@@ -81,23 +84,27 @@ export class AuthService {
             updatedAt: new Date().toISOString(),
           };
         } else {
+          const userMeta = user.user_metadata || {};
+          const metaNameStr =
+            (userMeta["full_name"] as string | undefined) ||
+            (userMeta["name"] as string | undefined) ||
+            user.email?.split("@")[0] ||
+            "Discord Member";
+          const metaPreferredUsernameStr =
+            (userMeta["preferred_username"] as string | undefined) ||
+            user.email?.split("@")[0] ||
+            `discord_${user.id.slice(0, 6)}`;
+
           profile = {
+            id: user.id,
             uid: user.id,
-            displayName:
-              user.user_metadata?.full_name ||
-              user.user_metadata?.name ||
-              user.email?.split("@")[0] ||
-              "Discord Member",
-            username: (
-              user.user_metadata?.preferred_username ||
-              user.email?.split("@")[0] ||
-              `discord_${user.id.slice(0, 6)}`
-            ).toLowerCase(),
+            displayName: metaNameStr,
+            username: metaPreferredUsernameStr.toLowerCase(),
             email: user.email || "",
-            avatar: user.user_metadata?.avatar_url || undefined,
+            avatar: (userMeta["avatar_url"] as string | undefined) || undefined,
             joinedAt: new Date().toISOString(),
             lastLogin: new Date().toISOString(),
-            roles: isAdmin ? ["Owner", "Admin", "Member"] : ["Member"],
+            roles: (isAdmin ? ["Owner", "Admin", "Member"] : ["Member"]) as UserRole[],
             isVerified: true,
             isBanned: false,
             isMuted: false,

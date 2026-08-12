@@ -80,7 +80,7 @@ export class EventLifecycleService {
     });
 
     // Award XP
-    await XPService.awardXP(user.uid, 150, `Registered for event: ${event.title}`);
+    await XPService.awardXP(user.uid || user.id || "", 150, `Registered for event: ${event.title}`);
 
     // Notify if slots almost full
     if (newRemaining <= 3 && newRemaining > 0) {

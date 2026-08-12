@@ -69,8 +69,9 @@ export interface RewardClaim {
   eventName: string;
   prize: string;
   reason: string;
-  status: "pending" | "completed" | "rejected";
+  status: "pending" | "completed" | "rejected" | "processing";
   paymentMethod?: "UPI" | "PayPal" | "Crypto" | "Bank";
+  accountDetails?: string;
   paymentDate?: string;
   proofImageUrl?: string;
   adminNote?: string;

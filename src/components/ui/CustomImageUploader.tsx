@@ -95,7 +95,7 @@ export const CustomImageUploader: React.FC<CustomImageUploaderProps> = ({
           maxWidth: 1920,
           maxHeight: 1080,
           quality: 0.85,
-          format: "jpeg",
+          format: "image/jpeg",
         });
 
         // 2. Upload to Supabase Storage

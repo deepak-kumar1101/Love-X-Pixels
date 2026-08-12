@@ -9,6 +9,6 @@ export function useVisitorTracker(): void {
   const pathname = routerState.location.pathname;
 
   useEffect(() => {
-    VisitorService.trackVisit(pathname, user?.uid);
-  }, [pathname, user?.uid]);
+    VisitorService.trackVisit(pathname, user?.id);
+  }, [pathname, user?.id]);
 }

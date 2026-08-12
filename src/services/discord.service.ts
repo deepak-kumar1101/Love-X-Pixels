@@ -28,7 +28,8 @@ export class DiscordService {
 
   /** Fetch live Discord server statistics */
   static async fetchGuildStats(
-    guildId = import.meta.env.VITE_DISCORD_GUILD_ID || "123456789012345678",
+    guildId = (import.meta.env as Record<string, string | undefined>)["VITE_DISCORD_GUILD_ID"] ||
+      "123456789012345678",
   ): Promise<DiscordGuildData> {
     const now = Date.now();
     // Cache for 30 seconds to avoid API throttling

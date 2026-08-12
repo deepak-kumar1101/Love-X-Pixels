@@ -115,12 +115,14 @@ export function subscribeToCollection<T extends { id: string }>(
     supabase
       .from(tableName)
       .select("*")
-      .then(({ data, error }) => {
-        if (!error && data && data.length > 0) {
-          notifySubscribers(collectionName, data as unknown as StoreRecord[]);
-        }
-      })
-      .catch(() => {});
+      .then(
+        ({ data, error }) => {
+          if (!error && data && data.length > 0) {
+            notifySubscribers(collectionName, data as unknown as StoreRecord[]);
+          }
+        },
+        () => {},
+      );
 
     // Realtime channel
     const channel = supabase
@@ -182,7 +184,7 @@ export async function updateFirestoreDoc<T extends DocumentData>(
   if (isSupabaseConfigured) {
     const tableName = getTableName(collectionName);
     try {
-      await supabase.from(tableName).update(data).eq("id", id);
+      await supabase.from(tableName).update(data as Record<string, unknown>).eq("id", id);
     } catch (err) {
       console.warn(`[Supabase Async Update] Table ${tableName} update notice:`, err);
     }

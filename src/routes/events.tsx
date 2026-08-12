@@ -86,7 +86,10 @@ function EventsPage() {
       toast.error("Please sign in with Discord to subscribe to event notifications.");
       return;
     }
-    await EventLifecycleService.subscribeEventNotification(event.id, user);
+    await EventLifecycleService.subscribeEventNotification(event.id, {
+      uid: user.id,
+      email: user.email,
+    });
     toast.success("🔔 Subscribed! You will be notified when this event goes live.");
   };
 

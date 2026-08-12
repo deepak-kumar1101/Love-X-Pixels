@@ -44,7 +44,7 @@ export const Route = createFileRoute("/payouts")({
   component: PayoutsPage,
 });
 
-function PayoutsPage() {
+export function PayoutsPage() {
   const [winners, setWinners] = useState<PayoutWinner[]>([]);
   const [reviews, setReviews] = useState<PayoutReview[]>([]);
   const [announcements, setAnnouncements] = useState<WinnerAnnouncement[]>([]);

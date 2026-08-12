@@ -1,6 +1,7 @@
 import type { UserRole } from "./rbac.model";
 
 export interface UserProfile {
+  id: string;
   uid: string;
   displayName: string;
   username: string;

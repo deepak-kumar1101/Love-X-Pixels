@@ -76,10 +76,19 @@ export abstract class BaseRepository<T extends { id: string }> {
     return generatedId;
   }
 
+  /** Query items matching field value */
+  async queryWhere(field: keyof T | string, _op: string, value: unknown): Promise<T[]> {
+    const all = await this.getAll([]);
+    return all.filter((item) => (item as Record<string, unknown>)[field as string] === value);
+  }
+
   /** Update document */
   async update(id: string, data: Partial<Omit<T, "id">>): Promise<void> {
     if (isSupabaseConfigured) {
-      const { error } = await supabase.from(this.tableName).update(data).eq("id", id);
+      const { error } = await supabase
+        .from(this.tableName)
+        .update(data as Record<string, unknown>)
+        .eq("id", id);
       if (error)
         console.warn(`[BaseRepository] Error updating ${id} in ${this.tableName}:`, error.message);
     }

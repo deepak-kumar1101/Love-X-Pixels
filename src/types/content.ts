@@ -54,7 +54,7 @@ export interface CommunityEvent {
   /** Human-readable time window, e.g. "8:00 PM – 10:00 PM IST". */
   timeLabel: string;
   host: string;
-  status: "upcoming" | "live" | "past";
+  status: "upcoming" | "live" | "past" | "completed";
   /** Banner image URL (imported asset or remote URL). */
   bannerUrl?: string;
   /** Reward copy, e.g. "₹2,000 + Rose role". */
@@ -76,7 +76,7 @@ export interface Partner {
   name: string;
   category: string;
   description: string;
-  memberCount?: string;
+  memberCount?: string | number;
   href?: string;
   logoUrl?: string;
   discordUrl?: string;
@@ -128,6 +128,7 @@ export interface PayoutReview {
   imageUrl?: string;
   payoutLabel?: string;
   approved?: boolean;
+  isVerified?: boolean;
   createdAt?: string;
 }
 
@@ -136,8 +137,8 @@ export interface GalleryItem {
   src: string;
   alt: string;
   caption?: string;
-  category?: "events" | "vc" | "funny" | "moments" | "announcements";
-  span?: "tall" | "wide" | "normal";
+  category?: string;
+  span?: string;
 }
 
 export interface SiteSettings {

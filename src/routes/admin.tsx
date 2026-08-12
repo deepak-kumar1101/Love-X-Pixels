@@ -64,6 +64,7 @@ import { exportToCSV } from "@/lib/csv-exporter";
 import { MediaService } from "@/services/media.service";
 import { EventAutomationService } from "@/services/event-automation.service";
 import { EventLifecycleService } from "@/services/event-lifecycle.service";
+import { BackupService } from "@/services/backup.service";
 import { auditRepository } from "@/repositories/visitor.repository";
 
 function toLocalDateTimeInputString(isoString?: string): string {
@@ -107,7 +108,7 @@ export const Route = createFileRoute("/admin")({
   component: AdminDashboard,
 });
 
-function AdminDashboard() {
+export function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passcode, setPasscode] = useState("");
   const [authError, setAuthError] = useState("");
@@ -601,7 +602,7 @@ function AdminDashboard() {
         </div>
         <div className="flex items-center space-x-3">
           <button
-            onClick={() => BackupService.exportFullBackupJSON()}
+            onClick={() => BackupService.exportSystemBackup()}
             className="inline-flex items-center space-x-1.5 rounded-xl border border-border bg-accent/40 px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-accent"
           >
             <Download className="h-4 w-4" />
