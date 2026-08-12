@@ -21,13 +21,7 @@ import type {
   StaffMember,
 } from "@/types/content";
 
-import gallery1 from "@/assets/gallery-1.jpg";
-import gallery3 from "@/assets/gallery-3.jpg";
-import gallery4 from "@/assets/gallery-4.jpg";
-import hero from "@/assets/hero.jpg";
-import event1 from "@/assets/event-1.jpg";
-import event2 from "@/assets/event-2.jpg";
-import event3 from "@/assets/event-3.jpg";
+
 
 /** TODO(firebase): collection "stats" */
 export const communityStats: CommunityStat[] = [

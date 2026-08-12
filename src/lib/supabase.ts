@@ -8,11 +8,14 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
 export const isSupabaseConfigured =
   Boolean(import.meta.env.VITE_SUPABASE_URL) && Boolean(import.meta.env.VITE_SUPABASE_ANON_KEY);
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+// isBrowser guard — detectSessionInUrl accesses window.location and crashes Node.js SSR
+const isBrowser = typeof window !== "undefined";
+
+export const supabase = createClient(SUPABASE_URL || "https://placeholder.supabase.co", SUPABASE_ANON_KEY || "placeholder", {
   auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
+    persistSession: isBrowser,
+    autoRefreshToken: isBrowser,
+    detectSessionInUrl: isBrowser,
   },
 });
 
