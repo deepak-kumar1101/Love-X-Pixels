@@ -10,7 +10,7 @@ import { SectionHeading } from "@/components/site/SectionHeading";
 import { WinnerAnnouncementCard } from "@/components/site/WinnerAnnouncementCard";
 import { EventDetailsModal } from "@/components/site/EventDetailsModal";
 import { ClaimRewardModal } from "@/components/site/ClaimRewardModal";
-import { communityEvents } from "@/content/placeholders";
+
 import { subscribeToCollection } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { EventLifecycleService } from "@/services/event-lifecycle.service";

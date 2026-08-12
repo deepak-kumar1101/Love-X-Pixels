@@ -7,7 +7,7 @@ import { Section } from "@/components/site/Section";
 import { SectionHeading } from "@/components/site/SectionHeading";
 import { StaffCard } from "@/components/site/StaffCard";
 import { StaffApplicationModal } from "@/components/site/StaffApplicationModal";
-import { staffMembers } from "@/content/placeholders";
+
 import { subscribeToCollection } from "@/lib/firebase";
 import type { StaffRank, StaffMember } from "@/types/content";
 
@@ -70,7 +70,7 @@ function StaffPage() {
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-    const unsub = subscribeToCollection<StaffMember>("staff", staffMembers ?? [], setList);
+    const unsub = subscribeToCollection<StaffMember>("staff", [], setList);
     return () => unsub();
   }, []);
 

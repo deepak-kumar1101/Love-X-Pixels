@@ -39,15 +39,8 @@ import {
   deleteFirestoreDoc,
 } from "@/lib/firebase";
 import { CustomImageUploader } from "@/components/ui/CustomImageUploader";
-import {
-  placeholders,
-  staffMembers,
-  communityEvents as events,
-  partners,
-  payoutWinners,
-  payoutReviews,
-  galleryItems,
-} from "@/content/placeholders";
+import { placeholders } from "@/content/placeholders";
+import { useAuth } from "@/hooks/useAuth";
 import type {
   StaffMember,
   CommunityEvent,
@@ -109,9 +102,10 @@ export const Route = createFileRoute("/admin")({
 });
 
 export function AdminDashboard() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [passcode, setPasscode] = useState("");
-  const [authError, setAuthError] = useState("");
+  const { userProfile, loading: authLoading, logout } = useAuth();
+  const isAuthenticated =
+    userProfile?.roles?.some((r) => ["Owner", "Admin", "CoOwner"].includes(r)) ?? false;
+  const [authError] = useState("");
 
   const [activeTab, setActiveTab] = useState<
     | "overview"
@@ -210,6 +204,18 @@ export function AdminDashboard() {
     const unsubVisitors = subscribeToCollection<VisitorLog>("visitorLogs", [], setVisitorLogs);
     const unsubAudit = subscribeToCollection<AuditLog>("auditLogs", [], setAuditLogs);
 
+    // Hydrate settings from Supabase on mount
+    const unsubSettings = subscribeToCollection<Record<string, unknown>>(
+      "settings",
+      [],
+      (rows) => {
+        const globalRow = rows.find((r) => r["id"] === "global") || rows[0];
+        if (globalRow) {
+          setSettings((prev) => ({ ...prev, ...globalRow }));
+        }
+      },
+    );
+
     return () => {
       unsubStaff();
       unsubEvents();
@@ -221,6 +227,7 @@ export function AdminDashboard() {
       unsubAnnounce();
       unsubVisitors();
       unsubAudit();
+      unsubSettings();
     };
   }, []);
 
@@ -234,17 +241,7 @@ export function AdminDashboard() {
     return () => clearInterval(interval);
   }, [eventsList]);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (passcode === "1234" || passcode === "lovepixels") {
-      setIsAuthenticated(true);
-      setAuthError("");
-      toast.success("Welcome back to LovePixels Admin Console!");
-    } else {
-      setAuthError("Invalid Admin PIN. (Default demo PIN is: 1234)");
-      toast.error("Invalid passcode.");
-    }
-  };
+  // Auth is handled by Supabase — no manual login handler needed.
 
   const logAuditAction = (action: string, targetCollection: string, targetId?: string) => {
     auditRepository
@@ -500,47 +497,40 @@ export function AdminDashboard() {
     }
   };
 
+  // Show loading while Supabase resolves the session
+  if (authLoading) {
+    return (
+      <div className="flex min-h-[85vh] items-center justify-center p-4">
+        <Toaster theme="dark" position="top-right" />
+        <div className="text-center">
+          <div className="mx-auto flex h-14 w-14 animate-spin items-center justify-center rounded-2xl bg-rose-500/15 text-rose-500">
+            <ShieldCheck className="h-7 w-7" />
+          </div>
+          <p className="mt-4 text-sm text-muted-foreground">Verifying access…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Not logged in or not an admin/owner role
   if (!isAuthenticated) {
     return (
       <div className="flex min-h-[85vh] items-center justify-center p-4">
         <Toaster theme="dark" position="top-right" />
-        <div className="w-full max-w-md overflow-hidden rounded-3xl border border-rose-500/30 bg-card p-8 shadow-2xl backdrop-blur-xl">
-          <div className="text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/15 text-rose-500 shadow-inner">
-              <Lock className="h-7 w-7" />
-            </div>
-            <h2 className="mt-4 font-serif text-2xl font-bold text-foreground">LovePixels Admin</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Protected Administrator Console. Enter Passcode PIN to unlock.
-            </p>
+        <div className="w-full max-w-md overflow-hidden rounded-3xl border border-rose-500/30 bg-card p-8 shadow-2xl backdrop-blur-xl text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/15 text-rose-500 shadow-inner">
+            <Lock className="h-7 w-7" />
           </div>
-
-          {authError && (
-            <div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-center text-xs text-rose-500">
-              {authError}
-            </div>
-          )}
-
-          <form onSubmit={handleLogin} className="mt-6 space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-foreground">
-                Admin Passcode PIN
-              </label>
-              <input
-                type="password"
-                value={passcode}
-                onChange={(e) => setPasscode(e.target.value)}
-                placeholder="Enter PIN (e.g. 1234)"
-                className="mt-1 w-full rounded-xl border border-border bg-accent/30 px-4 py-3 text-sm font-semibold text-foreground placeholder:text-muted-foreground focus:border-rose-500 focus:outline-none"
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 py-3 text-sm font-bold text-white shadow-lg transition-all duration-300 hover:scale-[1.02]"
-            >
-              Unlock Dashboard
-            </button>
-          </form>
+          <h2 className="mt-4 font-serif text-2xl font-bold text-foreground">Access Denied</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {!userProfile
+              ? "You must be logged in with Discord to access the admin panel."
+              : "Your account does not have Owner or Admin permissions."}
+          </p>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Log in via Discord using an account with the <strong>Owner</strong> or{" "}
+            <strong>Admin</strong> role assigned in Supabase.
+          </p>
         </div>
       </div>
     );
@@ -609,11 +599,11 @@ export function AdminDashboard() {
             <span>Export Backup</span>
           </button>
           <button
-            onClick={() => setIsAuthenticated(false)}
+            onClick={() => logout()}
             className="inline-flex items-center space-x-1.5 rounded-xl bg-rose-500/15 px-3.5 py-2 text-xs font-semibold text-rose-500 hover:bg-rose-500/25"
           >
             <LogOut className="h-4 w-4" />
-            <span>Lock</span>
+            <span>Sign Out</span>
           </button>
         </div>
       </div>
@@ -622,6 +612,7 @@ export function AdminDashboard() {
       <div className="flex items-center space-x-2 overflow-x-auto rounded-2xl border border-border/60 bg-card p-1.5">
         {[
           { id: "overview", label: "Overview", icon: Activity },
+          { id: "homepage", label: "Homepage", icon: Sparkles },
           { id: "events", label: "Events", icon: Calendar },
           { id: "payouts", label: "Winners & Proofs", icon: Trophy },
           { id: "claims", label: "Reward Claims", icon: Gift },
@@ -631,6 +622,7 @@ export function AdminDashboard() {
           { id: "reviews", label: "Reviews", icon: MessageSquare },
           { id: "announcements", label: "Announcements", icon: BellRing },
           { id: "settings", label: "Settings", icon: Sliders },
+          { id: "audit", label: "Audit Logs", icon: ShieldCheck },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -1460,6 +1452,18 @@ export function AdminDashboard() {
                 onUploadSuccess={(url) => setEditingGallery({ ...editingGallery, src: url })}
                 label="Gallery Image File"
               />
+              <div>
+                <label className="block text-xs font-bold text-foreground">Alt Text (for accessibility)</label>
+                <input
+                  type="text"
+                  value={editingGallery?.alt || ""}
+                  onChange={(e) =>
+                    setEditingGallery({ ...editingGallery, alt: e.target.value })
+                  }
+                  placeholder="Describe the image"
+                  className="mt-1 w-full rounded-xl border border-border bg-accent/30 px-3 py-2 text-xs font-semibold text-foreground"
+                />
+              </div>
               <div>
                 <label className="block text-xs font-bold text-foreground">Caption</label>
                 <input
