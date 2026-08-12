@@ -4,7 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
-  useLocation,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -134,8 +134,9 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootContent() {
   useVisitorTracker();
-  const location = useLocation();
-  const isAdminPath = location.pathname.startsWith("/admin");
+  const routerState = useRouterState();
+  const pathname = routerState?.location?.pathname ?? "";
+  const isAdminPath = pathname.startsWith("/admin");
 
   return (
     <>
