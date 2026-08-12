@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useLocation,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -133,18 +134,20 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootContent() {
   useVisitorTracker();
+  const location = useLocation();
+  const isAdminPath = location.pathname.startsWith("/admin");
 
   return (
     <>
       <Background />
       <LoadingScreen />
-      <Navbar />
+      {!isAdminPath && <Navbar />}
       <main className="min-h-screen">
         <PageTransition>
           <Outlet />
         </PageTransition>
       </main>
-      <Footer />
+      {!isAdminPath && <Footer />}
     </>
   );
 }

@@ -30,6 +30,7 @@ import {
   X,
   AlertTriangle,
   LayoutDashboard,
+  Menu,
 } from "lucide-react";
 import {
   AreaChart,
@@ -116,6 +117,7 @@ export function AdminDashboard() {
   const isAuthenticated =
     userProfile?.roles?.some((r) => ["Owner", "Admin", "CoOwner"].includes(r)) ?? false;
   const [authError] = useState("");
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState<
     | "overview"
@@ -617,18 +619,39 @@ export function AdminDashboard() {
         </div>
       )}
 
+      {/* MOBILE BACKDROP OVERLAY */}
+      {isMobileSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/70 z-40 md:hidden backdrop-blur-xs"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
       {/* SIDEBAR NAVIGATION */}
-      <aside className="w-64 border-r border-border/50 bg-[#07070b] p-6 flex flex-col justify-between shrink-0 h-screen sticky top-0">
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#07070b] border-r border-white/10 p-6 flex flex-col justify-between shrink-0 h-screen transition-transform duration-300 md:static md:translate-x-0 ${
+          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        }`}
+      >
         <div className="space-y-6 overflow-y-auto pr-1">
           {/* Logo / Header */}
-          <div className="flex items-center space-x-3 pb-5 border-b border-border/40">
-            <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-rose-500/10 text-rose-500 text-lg shadow-sm shadow-rose-500/20">
-              ❤️
+          <div className="flex items-center justify-between pb-5 border-b border-white/10">
+            <div className="flex items-center space-x-3">
+              <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-rose-500/10 text-rose-500 text-lg shadow-sm shadow-rose-500/20">
+                ❤️
+              </div>
+              <div>
+                <h2 className="font-serif text-sm font-bold text-white">LovePixels</h2>
+                <p className="text-[10px] text-rose-500 uppercase tracking-widest font-bold">Admin Console</p>
+              </div>
             </div>
-            <div>
-              <h2 className="font-serif text-sm font-bold text-foreground">LovePixels</h2>
-              <p className="text-[10px] text-rose-500 uppercase tracking-widest font-bold">Admin Console</p>
-            </div>
+            {/* Mobile close button */}
+            <button
+              onClick={() => setIsMobileSidebarOpen(false)}
+              className="p-1 text-zinc-400 hover:text-white md:hidden"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
           {/* Nav Items */}
@@ -652,11 +675,14 @@ export function AdminDashboard() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                  onClick={() => {
+                    setActiveTab(tab.id as typeof activeTab);
+                    setIsMobileSidebarOpen(false);
+                  }}
                   className={`flex w-full items-center space-x-3 rounded-xl px-4 py-3 text-xs font-semibold transition-all ${
                     isActive
                       ? "bg-gradient-to-r from-rose-500/20 to-pink-500/5 text-rose-400 border-l-2 border-rose-500 shadow-sm"
-                      : "text-muted-foreground hover:bg-accent/40 hover:text-foreground"
+                      : "text-zinc-400 hover:bg-white/5 hover:text-zinc-100"
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -668,10 +694,10 @@ export function AdminDashboard() {
         </div>
 
         {/* Sidebar Footer Operations */}
-        <div className="pt-4 border-t border-border/40 space-y-2">
+        <div className="pt-4 border-t border-white/10 space-y-2">
           <button
             onClick={() => BackupService.exportSystemBackup()}
-            className="flex w-full items-center justify-center space-x-2 rounded-xl border border-border/50 bg-accent/20 px-3 py-2.5 text-xs font-semibold text-foreground hover:bg-accent"
+            className="flex w-full items-center justify-center space-x-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-semibold text-zinc-200 hover:bg-white/10 hover:text-white"
           >
             <Download className="h-3.5 w-3.5" />
             <span>Export Backup</span>
@@ -689,25 +715,36 @@ export function AdminDashboard() {
       {/* MAIN CONTAINER */}
       <main className="flex-1 min-w-0 flex flex-col h-screen overflow-y-auto bg-[#030307]">
         {/* Top Header */}
-        <header className="flex justify-between items-center px-8 py-5 border-b border-border/30 bg-[#05050b]/80 backdrop-blur-md sticky top-0 z-40">
-          <div>
-            <p className="text-[9px] text-rose-500 uppercase tracking-widest font-bold">Console Panel</p>
-            <h1 className="font-serif text-2xl font-bold text-foreground capitalize">
-              {tabLabels[activeTab] || activeTab}
-            </h1>
+        <header className="flex justify-between items-center px-4 sm:px-8 py-4 sm:py-5 border-b border-white/10 bg-[#05050b]/90 backdrop-blur-md sticky top-0 z-40">
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="p-2 rounded-xl bg-white/5 border border-white/10 text-zinc-300 hover:text-white md:hidden"
+              aria-label="Open sidebar navigation"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <div>
+              <p className="text-[9px] text-rose-500 uppercase tracking-widest font-bold">Console Panel</p>
+              <h1 className="font-serif text-xl sm:text-2xl font-bold text-white capitalize">
+                {tabLabels[activeTab] || activeTab}
+              </h1>
+            </div>
           </div>
-          <div className="flex items-center space-x-3 bg-card border border-border/60 px-4 py-2 rounded-2xl shadow-xs">
-            <ShieldCheck className="h-4 w-4 text-rose-500 animate-pulse" />
-            <span className="text-xs font-semibold text-muted-foreground">{userProfile?.displayName || userProfile?.email}</span>
+          <div className="flex items-center space-x-2 sm:space-x-3 bg-[#0d0d15] border border-white/10 px-3 sm:px-4 py-2 rounded-2xl shadow-xs">
+            <ShieldCheck className="h-4 w-4 text-rose-500 animate-pulse shrink-0" />
+            <span className="text-xs font-semibold text-zinc-200 max-w-[120px] sm:max-w-none truncate">
+              {userProfile?.displayName || userProfile?.email}
+            </span>
           </div>
         </header>
 
         {/* Page Inner Content */}
-        <div className="p-8 space-y-6">
+        <div className="p-4 sm:p-8 space-y-6">
           {/* TAB 1: OVERVIEW */}
           {activeTab === "overview" && (
             <div className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-4">
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                 {[
                   {
                     label: "Active Events",
@@ -740,10 +777,10 @@ export function AdminDashboard() {
                 ].map((stat, idx) => {
                   const Icon = stat.icon;
                   return (
-                    <div key={idx} className="rounded-3xl border border-border/60 bg-[#0c0c12]/50 p-6 flex justify-between items-center relative overflow-hidden backdrop-blur-xl">
+                    <div key={idx} className="rounded-3xl border border-white/10 bg-[#0c0c12] p-5 sm:p-6 flex justify-between items-center relative overflow-hidden backdrop-blur-xl">
                       <div className="space-y-1">
-                        <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</span>
-                        <p className="font-serif text-3xl font-bold text-foreground">{stat.val}</p>
+                        <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">{stat.label}</span>
+                        <p className="font-serif text-3xl font-bold text-white">{stat.val}</p>
                       </div>
                       <div className={`h-11 w-11 rounded-2xl flex items-center justify-center ${stat.bg} ${stat.color} shrink-0`}>
                         <Icon className="h-5 w-5" />
@@ -754,14 +791,14 @@ export function AdminDashboard() {
               </div>
 
               {/* TWO COLUMN WORKSPACE */}
-              <div className="grid gap-6 md:grid-cols-3">
+              <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
                 {/* Chart Panel */}
-                <div className="md:col-span-2 rounded-3xl border border-border/60 bg-[#0c0c12]/50 p-6 backdrop-blur-xl space-y-4">
+                <div className="lg:col-span-2 rounded-3xl border border-white/10 bg-[#0c0c12] p-5 sm:p-6 backdrop-blur-xl space-y-4">
                   <div>
                     <span className="text-[10px] text-rose-500 uppercase tracking-widest font-bold">Analytics</span>
-                    <h4 className="font-serif text-lg font-bold text-foreground">Rewards distributed over time</h4>
+                    <h4 className="font-serif text-lg font-bold text-white">Rewards distributed over time</h4>
                   </div>
-                  <div className="h-[300px] w-full pr-4">
+                  <div className="h-[250px] sm:h-[300px] w-full pr-2 sm:pr-4">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <defs>
@@ -779,6 +816,7 @@ export function AdminDashboard() {
                             border: "1px solid rgba(255, 255, 255, 0.1)",
                             borderRadius: "16px",
                             fontSize: "12px",
+                            color: "#fff",
                           }}
                         />
                         <Area type="monotone" dataKey="amount" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#colorAmount)" />
@@ -788,17 +826,17 @@ export function AdminDashboard() {
                 </div>
 
                 {/* Recent Activity Panel */}
-                <div className="rounded-3xl border border-border/60 bg-[#0c0c12]/50 p-6 backdrop-blur-xl space-y-4">
+                <div className="rounded-3xl border border-white/10 bg-[#0c0c12] p-5 sm:p-6 backdrop-blur-xl space-y-4">
                   <div>
                     <span className="text-[10px] text-rose-500 uppercase tracking-widest font-bold">Activity Feed</span>
-                    <h4 className="font-serif text-lg font-bold text-foreground">Recent actions</h4>
+                    <h4 className="font-serif text-lg font-bold text-white">Recent actions</h4>
                   </div>
                   <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
                     {auditLogs.slice(0, 5).map((log, idx) => (
-                      <div key={idx} className="flex items-center justify-between border-b border-border/20 pb-3 last:border-0 last:pb-0">
+                      <div key={idx} className="flex items-center justify-between border-b border-white/10 pb-3 last:border-0 last:pb-0">
                         <div className="space-y-0.5">
-                          <p className="text-xs font-semibold text-foreground line-clamp-1">{log.action}</p>
-                          <p className="text-[10px] text-muted-foreground">{new Date(log.timestamp).toLocaleDateString()}</p>
+                          <p className="text-xs font-semibold text-white line-clamp-1">{log.action}</p>
+                          <p className="text-[10px] text-zinc-400">{new Date(log.timestamp).toLocaleDateString()}</p>
                         </div>
                         <span className="rounded bg-rose-500/10 px-2.5 py-0.5 text-[9px] font-bold text-rose-500 uppercase tracking-wider shrink-0">
                           {log.targetCollection}
@@ -806,7 +844,7 @@ export function AdminDashboard() {
                       </div>
                     ))}
                     {auditLogs.length === 0 && (
-                      <p className="text-xs text-muted-foreground text-center py-6">No recent actions recorded.</p>
+                      <p className="text-xs text-zinc-400 text-center py-6">No recent actions recorded.</p>
                     )}
                   </div>
                 </div>
