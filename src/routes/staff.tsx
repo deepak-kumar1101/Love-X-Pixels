@@ -9,6 +9,7 @@ import { StaffCard } from "@/components/site/StaffCard";
 import { StaffApplicationModal } from "@/components/site/StaffApplicationModal";
 
 import { subscribeToCollection } from "@/lib/firebase";
+import { staffMembers } from "@/content/placeholders";
 import type { StaffRank, StaffMember } from "@/types/content";
 
 export const Route = createFileRoute("/staff")({
@@ -70,7 +71,7 @@ function StaffPage() {
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-    const unsub = subscribeToCollection<StaffMember>("staff", [], setList);
+    const unsub = subscribeToCollection<StaffMember>("staff", staffMembers, setList);
     return () => unsub();
   }, []);
 

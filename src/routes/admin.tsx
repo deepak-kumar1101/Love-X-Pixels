@@ -50,7 +50,15 @@ import {
   deleteFirestoreDoc,
 } from "@/lib/firebase";
 import { CustomImageUploader } from "@/components/ui/CustomImageUploader";
-import { placeholders } from "@/content/placeholders";
+import {
+  placeholders,
+  staffMembers,
+  communityEvents,
+  partners as placeholderPartners,
+  payoutWinners,
+  payoutReviews,
+  galleryItems,
+} from "@/content/placeholders";
 import { useAuth } from "@/hooks/useAuth";
 import type {
   StaffMember,
@@ -231,15 +239,19 @@ export function AdminDashboard() {
   });
 
   useEffect(() => {
-    const unsubStaff = subscribeToCollection<StaffMember>("staff", [], setStaffList);
-    const unsubEvents = subscribeToCollection<ExtendedCommunityEvent>("events", [], (list) => {
-      setEventsList(EventAutomationService.processEventStatuses(list) as ExtendedCommunityEvent[]);
-    });
+    const unsubStaff = subscribeToCollection<StaffMember>("staff", staffMembers, setStaffList);
+    const unsubEvents = subscribeToCollection<ExtendedCommunityEvent>(
+      "events",
+      communityEvents as ExtendedCommunityEvent[],
+      (list) => {
+        setEventsList(EventAutomationService.processEventStatuses(list) as ExtendedCommunityEvent[]);
+      },
+    );
     const unsubClaims = subscribeToCollection<RewardClaim>("rewardClaims", [], setRewardClaimsList);
-    const unsubPartners = subscribeToCollection<Partner>("partners", [], setPartnersList);
-    const unsubWinners = subscribeToCollection<PayoutWinner>("payouts", [], setWinnersList);
-    const unsubReviews = subscribeToCollection<PayoutReview>("reviews", [], setReviewsList);
-    const unsubGallery = subscribeToCollection<GalleryItem>("gallery", [], setGalleryList);
+    const unsubPartners = subscribeToCollection<Partner>("partners", placeholderPartners, setPartnersList);
+    const unsubWinners = subscribeToCollection<PayoutWinner>("payouts", payoutWinners, setWinnersList);
+    const unsubReviews = subscribeToCollection<PayoutReview>("reviews", payoutReviews, setReviewsList);
+    const unsubGallery = subscribeToCollection<GalleryItem>("gallery", galleryItems, setGalleryList);
     const unsubAnnounce = subscribeToCollection<Announcement>(
       "announcements",
       [],

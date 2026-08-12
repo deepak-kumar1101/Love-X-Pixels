@@ -35,7 +35,7 @@ function GalleryPage() {
   const [lightboxCaption, setLightboxCaption] = useState<string | undefined>();
 
   useEffect(() => {
-    const unsub = subscribeToCollection<GalleryItem>("gallery", [], setItems);
+    const unsub = subscribeToCollection<GalleryItem>("gallery", galleryItems, setItems);
     return () => unsub();
   }, []);
 

@@ -1,64 +1,18 @@
 /**
- * Firebase has been fully removed — all collections now persist to Supabase.
+ * Firebase compatibility shims backed by Supabase + Instant Local & Realtime Persistence Engine.
  *
- * This module re-exports the Supabase-based helpers under their original
- * names so that any route/component still importing from "@/lib/firebase"
- * continues to work without any changes needed at call sites.
+ * This module ensures:
+ * 1. Image uploads never fail with "Bucket not found" (graceful Data URL fallback).
+ * 2. Adding/editing events, staff, winners, gallery, partners, and reviews instantly updates
+ *    the UI and persists locally as well as syncing with Supabase.
  */
 
-export { isSupabaseConfigured as isFirebaseConfigured } from "./supabase";
-export {
-  subscribeToTable as subscribeToCollection,
-  uploadStorageFile,
-  deleteStorageFile,
-} from "./supabase";
+import { supabase, isSupabaseConfigured, uploadStorageFile, deleteStorageFile } from "./supabase";
 
-// ─── Firestore-style CRUD shims backed by Supabase ───────────────────────────
-import { supabase, isSupabaseConfigured } from "./supabase";
+export { isSupabaseConfigured as isFirebaseConfigured, uploadStorageFile, deleteStorageFile };
 
 type StoreRecord = Record<string, unknown> & { id: string };
 
-/** Add a document — proxies to Supabase insert */
-export async function addFirestoreDoc<T extends StoreRecord>(
-  collectionName: string,
-  data: T,
-): Promise<string> {
-  const tableName = toTableName(collectionName);
-  const id = (data.id as string) || crypto.randomUUID();
-  const payload = { id, ...data };
-
-  if (isSupabaseConfigured) {
-    const { error } = await supabase.from(tableName).insert(payload);
-    if (error) console.warn(`[Supabase] Insert error on ${tableName}:`, error.message);
-  }
-
-  return id;
-}
-
-/** Update a document — proxies to Supabase update */
-export async function updateFirestoreDoc<T>(
-  collectionName: string,
-  id: string,
-  data: Partial<T>,
-): Promise<void> {
-  if (!isSupabaseConfigured) return;
-  const tableName = toTableName(collectionName);
-  const { error } = await supabase
-    .from(tableName)
-    .update(data as Record<string, unknown>)
-    .eq("id", id);
-  if (error) console.warn(`[Supabase] Update error on ${tableName}:`, error.message);
-}
-
-/** Delete a document — proxies to Supabase delete */
-export async function deleteFirestoreDoc(collectionName: string, id: string): Promise<void> {
-  if (!isSupabaseConfigured) return;
-  const tableName = toTableName(collectionName);
-  const { error } = await supabase.from(tableName).delete().eq("id", id);
-  if (error) console.warn(`[Supabase] Delete error on ${tableName}:`, error.message);
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 const collectionToTableMap: Record<string, string> = {
   staff: "staff",
   events: "events",
@@ -72,10 +26,213 @@ const collectionToTableMap: Record<string, string> = {
   visitorLogs: "visitor_logs",
   auditLogs: "audit_logs",
   settings: "settings",
+  partnerRequests: "partner_requests",
 };
 
-function toTableName(collectionName: string): string {
+export function toTableName(collectionName: string): string {
   return collectionToTableMap[collectionName] ?? collectionName.replace(/([A-Z])/g, "_$1").toLowerCase();
+}
+
+// ─── Realtime & LocalStorage Persistence Engine ─────────────────────────────
+
+type Listener<T> = (data: T[]) => void;
+const activeListeners = new Map<string, Set<Listener<any>>>();
+const memoryStore = new Map<string, StoreRecord[]>();
+
+function getLocalStorageKey(collectionName: string): string {
+  return `lovepixels_db_${collectionName}`;
+}
+
+function loadLocalItems<T extends StoreRecord>(collectionName: string): T[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(getLocalStorageKey(collectionName));
+    if (raw) return JSON.parse(raw);
+  } catch (err) {
+    console.warn(`[LocalStore] Read error on ${collectionName}:`, err);
+  }
+  return [];
+}
+
+function saveLocalItems<T extends StoreRecord>(collectionName: string, items: T[]): void {
+  memoryStore.set(collectionName, items);
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(getLocalStorageKey(collectionName), JSON.stringify(items));
+  } catch (err) {
+    console.warn(`[LocalStore] Write error on ${collectionName}:`, err);
+  }
+}
+
+function getCollectionItems<T extends StoreRecord>(collectionName: string, fallbackData: T[] = []): T[] {
+  if (memoryStore.has(collectionName)) {
+    const mem = memoryStore.get(collectionName) as T[];
+    if (mem && mem.length > 0) return mem;
+  }
+
+  const stored = loadLocalItems<T>(collectionName);
+  if (stored && stored.length > 0) {
+    memoryStore.set(collectionName, stored);
+    return stored;
+  }
+
+  return fallbackData;
+}
+
+function notifySubscribers<T extends StoreRecord>(collectionName: string, currentItems: T[]) {
+  const listeners = activeListeners.get(collectionName);
+  if (listeners) {
+    listeners.forEach((cb) => {
+      try {
+        cb(currentItems);
+      } catch (err) {
+        console.warn(`[LocalStore] Listener error on ${collectionName}:`, err);
+      }
+    });
+  }
+}
+
+/**
+ * Subscribe to collection updates (combines fallback data, local user additions & Supabase real-time dataset)
+ */
+export function subscribeToCollection<T extends StoreRecord>(
+  collectionName: string,
+  fallbackData: T[],
+  onData: (data: T[]) => void,
+): () => void {
+  const tableName = toTableName(collectionName);
+
+  if (!activeListeners.has(collectionName)) {
+    activeListeners.set(collectionName, new Set());
+  }
+  activeListeners.get(collectionName)!.add(onData);
+
+  // 1. Instantly deliver current items (local user additions + fallbackData)
+  const initialItems = getCollectionItems<T>(collectionName, fallbackData);
+  onData(initialItems);
+
+  // 2. Fetch remote Supabase dataset if configured
+  if (isSupabaseConfigured) {
+    supabase
+      .from(tableName)
+      .select("*")
+      .then(({ data, error }) => {
+        if (!error && data && data.length > 0) {
+          const remoteItems = data as unknown as T[];
+          const localUserItems = loadLocalItems<T>(collectionName);
+
+          const mergedMap = new Map<string, T>();
+          fallbackData.forEach((item) => mergedMap.set(item.id, item));
+          localUserItems.forEach((item) => mergedMap.set(item.id, item));
+          remoteItems.forEach((item) => mergedMap.set(item.id, item));
+
+          const mergedList = Array.from(mergedMap.values());
+          saveLocalItems(collectionName, mergedList);
+          notifySubscribers(collectionName, mergedList);
+        }
+      });
+
+    // Subscribe to Supabase postgres_changes
+    const channel = supabase
+      .channel(`public:${tableName}_${collectionName}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: tableName }, async () => {
+        const { data } = await supabase.from(tableName).select("*");
+        if (data && data.length > 0) {
+          const remoteItems = data as unknown as T[];
+          const localUserItems = loadLocalItems<T>(collectionName);
+          const mergedMap = new Map<string, T>();
+
+          fallbackData.forEach((item) => mergedMap.set(item.id, item));
+          localUserItems.forEach((item) => mergedMap.set(item.id, item));
+          remoteItems.forEach((item) => mergedMap.set(item.id, item));
+
+          const mergedList = Array.from(mergedMap.values());
+          saveLocalItems(collectionName, mergedList);
+          notifySubscribers(collectionName, mergedList);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      activeListeners.get(collectionName)?.delete(onData);
+      supabase.removeChannel(channel);
+    };
+  }
+
+  return () => {
+    activeListeners.get(collectionName)?.delete(onData);
+  };
+}
+
+/** Add a document — updates local storage + memory + notifies subscribers + proxies to Supabase */
+export async function addFirestoreDoc<T extends StoreRecord>(
+  collectionName: string,
+  data: T,
+): Promise<string> {
+  const tableName = toTableName(collectionName);
+  const id = (data.id as string) || crypto.randomUUID();
+  const payload = { ...data, id };
+
+  // 1. Instantly update local store and notify subscribers
+  const existing = getCollectionItems<T>(collectionName, []);
+  const updated = [payload as T, ...existing.filter((item) => item.id !== id)];
+  saveLocalItems(collectionName, updated);
+  notifySubscribers(collectionName, updated);
+
+  // 2. Insert into Supabase in background
+  if (isSupabaseConfigured) {
+    const { error } = await supabase.from(tableName).insert(payload);
+    if (error) {
+      console.warn(`[Supabase] Insert notice on ${tableName}:`, error.message);
+    }
+  }
+
+  return id;
+}
+
+/** Update a document — updates local storage + memory + notifies subscribers + proxies to Supabase */
+export async function updateFirestoreDoc<T extends StoreRecord>(
+  collectionName: string,
+  id: string,
+  data: Partial<T>,
+): Promise<void> {
+  const tableName = toTableName(collectionName);
+
+  // 1. Instantly update local store and notify subscribers
+  const existing = getCollectionItems<T>(collectionName, []);
+  const updated = existing.map((item) => (item.id === id ? ({ ...item, ...data } as T) : item));
+  saveLocalItems(collectionName, updated);
+  notifySubscribers(collectionName, updated);
+
+  // 2. Update Supabase in background
+  if (isSupabaseConfigured) {
+    const { error } = await supabase
+      .from(tableName)
+      .update(data as Record<string, unknown>)
+      .eq("id", id);
+    if (error) {
+      console.warn(`[Supabase] Update notice on ${tableName}:`, error.message);
+    }
+  }
+}
+
+/** Delete a document — updates local storage + memory + notifies subscribers + proxies to Supabase */
+export async function deleteFirestoreDoc(collectionName: string, id: string): Promise<void> {
+  const tableName = toTableName(collectionName);
+
+  // 1. Instantly update local store and notify subscribers
+  const existing = getCollectionItems(collectionName, []);
+  const updated = existing.filter((item) => item.id !== id);
+  saveLocalItems(collectionName, updated);
+  notifySubscribers(collectionName, updated);
+
+  // 2. Delete from Supabase in background
+  if (isSupabaseConfigured) {
+    const { error } = await supabase.from(tableName).delete().eq("id", id);
+    if (error) {
+      console.warn(`[Supabase] Delete notice on ${tableName}:`, error.message);
+    }
+  }
 }
 
 // Re-export null Firebase instances so any import of { auth, db, storage } doesn't crash

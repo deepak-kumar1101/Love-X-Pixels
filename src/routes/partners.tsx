@@ -8,6 +8,7 @@ import { Reveal } from "@/components/site/Reveal";
 import { Section } from "@/components/site/Section";
 import { SectionHeading } from "@/components/site/SectionHeading";
 import { subscribeToCollection, addFirestoreDoc } from "@/lib/firebase";
+import { partners as placeholderPartners } from "@/content/placeholders";
 import type { Partner } from "@/types/content";
 
 export const Route = createFileRoute("/partners")({
@@ -40,7 +41,7 @@ function PartnersPage() {
   const [sent, setSent] = useState(false);
 
   useEffect(() => {
-    const unsub = subscribeToCollection<Partner>("partners", [], setList);
+    const unsub = subscribeToCollection<Partner>("partners", placeholderPartners, setList);
     return () => unsub();
   }, []);
 

@@ -12,6 +12,7 @@ import { EventDetailsModal } from "@/components/site/EventDetailsModal";
 import { ClaimRewardModal } from "@/components/site/ClaimRewardModal";
 
 import { subscribeToCollection } from "@/lib/firebase";
+import { communityEvents } from "@/content/placeholders";
 import { useAuth } from "@/hooks/useAuth";
 import { EventLifecycleService } from "@/services/event-lifecycle.service";
 import type { ExtendedCommunityEvent, WinnerAnnouncement } from "@/models/event-system.model";
@@ -48,10 +49,14 @@ function EventsPage() {
   const [isClaimOpen, setIsClaimOpen] = useState(false);
 
   useEffect(() => {
-    const unsubEvents = subscribeToCollection<ExtendedCommunityEvent>("events", [], (list) => {
-      setEventsList(list);
-      setIsLoading(false);
-    });
+    const unsubEvents = subscribeToCollection<ExtendedCommunityEvent>(
+      "events",
+      communityEvents as ExtendedCommunityEvent[],
+      (list) => {
+        setEventsList(list);
+        setIsLoading(false);
+      },
+    );
     const unsubAnnounce = subscribeToCollection<WinnerAnnouncement>(
       "winnerAnnouncements",
       [],
