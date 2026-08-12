@@ -6,8 +6,9 @@ import { Reveal } from "@/components/site/Reveal";
 import { Section } from "@/components/site/Section";
 import { SectionHeading } from "@/components/site/SectionHeading";
 import { StaffCard } from "@/components/site/StaffCard";
+import { StaffApplicationModal } from "@/components/site/StaffApplicationModal";
 import { staffMembers } from "@/content/placeholders";
-import { subscribeToCollection, addFirestoreDoc } from "@/lib/firebase";
+import { subscribeToCollection } from "@/lib/firebase";
 import type { StaffRank, StaffMember } from "@/types/content";
 
 export const Route = createFileRoute("/staff")({
@@ -66,26 +67,20 @@ const rankGroups: { rank: StaffRank; title: string; description: string; columns
 function StaffPage() {
   const [list, setList] = useState<StaffMember[]>([]);
   const [applicantHandle, setApplicantHandle] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-    const unsub = subscribeToCollection<StaffMember>("staff", [], setList);
+    const unsub = subscribeToCollection<StaffMember>("staff", staffMembers ?? [], setList);
     return () => unsub();
   }, []);
 
-  const handleApply = async (e: React.FormEvent) => {
+  const handleApply = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!applicantHandle.trim()) return;
-    try {
-      await addFirestoreDoc("staffApplications", {
-        handle: applicantHandle.trim(),
-        createdAt: new Date().toISOString(),
-      });
-      setSubmitted(true);
-      setApplicantHandle("");
-    } catch (err) {
-      console.error("Error submitting application:", err);
-    }
+    const handle = applicantHandle.trim();
+    if (!handle) return;
+    // Normalise: ensure it starts with @
+    setApplicantHandle(handle.startsWith("@") ? handle : `@${handle}`);
+    setShowModal(true);
   };
 
   return (
@@ -119,6 +114,7 @@ function StaffPage() {
         );
       })}
 
+      {/* Application Section */}
       <Section className="pt-0">
         <Reveal>
           <div className="glass-strong grid gap-6 rounded-4xl px-8 py-12 text-center sm:px-14">
@@ -130,37 +126,42 @@ function StaffPage() {
               handle and we'll reach out when the next round opens.
             </p>
 
-            {submitted ? (
-              <div className="rounded-full bg-rose-500/15 py-3 text-sm font-semibold text-rose-500">
-                ✨ Application received! Thank you for offering your help.
-              </div>
-            ) : (
-              <form
-                className="mx-auto grid w-full max-w-md grid-cols-[minmax(0,1fr)_auto] gap-2"
-                onSubmit={handleApply}
+            <form
+              className="mx-auto grid w-full max-w-md grid-cols-[minmax(0,1fr)_auto] gap-2"
+              onSubmit={handleApply}
+            >
+              <label htmlFor="staff-handle" className="sr-only">
+                Discord handle
+              </label>
+              <input
+                id="staff-handle"
+                required
+                placeholder="@your_discord_handle"
+                value={applicantHandle}
+                onChange={(e) => setApplicantHandle(e.target.value)}
+                className="min-w-0 rounded-full border border-border bg-card/80 px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-rose-400"
+              />
+              <button
+                type="submit"
+                className="shrink-0 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-medium text-white transition-transform duration-300 hover:scale-[1.03]"
               >
-                <label htmlFor="staff-handle" className="sr-only">
-                  Discord handle
-                </label>
-                <input
-                  id="staff-handle"
-                  required
-                  placeholder="@your_discord_handle"
-                  value={applicantHandle}
-                  onChange={(e) => setApplicantHandle(e.target.value)}
-                  className="min-w-0 rounded-full border border-border bg-card/80 px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-rose-400"
-                />
-                <button
-                  type="submit"
-                  className="shrink-0 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-medium text-white transition-transform duration-300 hover:scale-[1.03]"
-                >
-                  Apply
-                </button>
-              </form>
-            )}
+                Apply
+              </button>
+            </form>
           </div>
         </Reveal>
       </Section>
+
+      {/* Application Modal */}
+      {showModal && (
+        <StaffApplicationModal
+          discordHandle={applicantHandle}
+          onClose={() => {
+            setShowModal(false);
+            setApplicantHandle("");
+          }}
+        />
+      )}
     </>
   );
 }
