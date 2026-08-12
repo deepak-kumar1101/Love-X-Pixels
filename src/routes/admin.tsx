@@ -29,7 +29,17 @@ import {
   Gift,
   X,
   AlertTriangle,
+  LayoutDashboard,
 } from "lucide-react";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as ChartTooltip,
+  ResponsiveContainer,
+} from "recharts";
 import { Toaster, toast } from "sonner";
 
 import {
@@ -168,6 +178,38 @@ export function AdminDashboard() {
   const [editingAnnouncement, setEditingAnnouncement] = useState<Partial<Announcement> | null>(
     null,
   );
+
+  const tabLabels = useMemo<Record<string, string>>(() => ({
+    overview: "Dashboard",
+    homepage: "Homepage Customizer",
+    events: "Community Events",
+    payouts: "Winners & Proofs",
+    claims: "Reward Claims",
+    staff: "Staff Roster",
+    gallery: "Media Gallery",
+    partners: "Affiliate Partners",
+    reviews: "Member Reviews",
+    announcements: "Announcements",
+    settings: "Global Settings",
+    audit: "Audit Logs",
+  }), []);
+
+  const chartData = useMemo(() => [
+    { date: "07-30", amount: 1000 },
+    { date: "07-31", amount: 2000 },
+    { date: "08-01", amount: 1500 },
+    { date: "08-02", amount: 3000 },
+    { date: "08-03", amount: 2500 },
+    { date: "08-04", amount: 4000 },
+    { date: "08-05", amount: 3500 },
+    { date: "08-06", amount: 5000 },
+    { date: "08-07", amount: 4500 },
+    { date: "08-08", amount: 6000 },
+    { date: "08-09", amount: 5500 },
+    { date: "08-10", amount: 7000 },
+    { date: "08-11", amount: 6500 },
+    { date: "08-12", amount: 8000 },
+  ], []);
 
   // Settings
   const [settings, setSettings] = useState({
@@ -537,7 +579,7 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen pb-16 pt-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen flex bg-[#030307] text-foreground">
       <Toaster theme="dark" position="top-right" />
 
       {/* Delete Confirmation Dialog */}
@@ -575,111 +617,202 @@ export function AdminDashboard() {
         </div>
       )}
 
-      {/* Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-border/60 bg-card p-6 shadow-lg">
-        <div className="flex items-center space-x-3">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-rose-500/15 text-rose-500">
-            <ShieldCheck className="h-6 w-6" />
+      {/* SIDEBAR NAVIGATION */}
+      <aside className="w-64 border-r border-border/50 bg-[#07070b] p-6 flex flex-col justify-between shrink-0 h-screen sticky top-0">
+        <div className="space-y-6 overflow-y-auto pr-1">
+          {/* Logo / Header */}
+          <div className="flex items-center space-x-3 pb-5 border-b border-border/40">
+            <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-rose-500/10 text-rose-500 text-lg shadow-sm shadow-rose-500/20">
+              ❤️
+            </div>
+            <div>
+              <h2 className="font-serif text-sm font-bold text-foreground">LovePixels</h2>
+              <p className="text-[10px] text-rose-500 uppercase tracking-widest font-bold">Admin Console</p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-serif text-2xl font-bold text-foreground">
-              LovePixels Admin Console
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              Vynex-Grade Full CMS & Real-time Management System
-            </p>
-          </div>
+
+          {/* Nav Items */}
+          <nav className="space-y-1">
+            {[
+              { id: "overview", label: "Dashboard", icon: LayoutDashboard },
+              { id: "homepage", label: "Homepage", icon: Sparkles },
+              { id: "events", label: "Events", icon: Calendar },
+              { id: "payouts", label: "Winners & Proofs", icon: Trophy },
+              { id: "claims", label: "Reward Claims", icon: Gift },
+              { id: "staff", label: "Staff Roster", icon: Users },
+              { id: "gallery", label: "Gallery", icon: ImageIcon },
+              { id: "partners", label: "Partners", icon: HeartHandshake },
+              { id: "reviews", label: "Reviews", icon: MessageSquare },
+              { id: "announcements", label: "Announcements", icon: BellRing },
+              { id: "settings", label: "Settings", icon: Sliders },
+              { id: "audit", label: "Audit Logs", icon: ShieldCheck },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                  className={`flex w-full items-center space-x-3 rounded-xl px-4 py-3 text-xs font-semibold transition-all ${
+                    isActive
+                      ? "bg-gradient-to-r from-rose-500/20 to-pink-500/5 text-rose-400 border-l-2 border-rose-500 shadow-sm"
+                      : "text-muted-foreground hover:bg-accent/40 hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </nav>
         </div>
-        <div className="flex items-center space-x-3">
+
+        {/* Sidebar Footer Operations */}
+        <div className="pt-4 border-t border-border/40 space-y-2">
           <button
             onClick={() => BackupService.exportSystemBackup()}
-            className="inline-flex items-center space-x-1.5 rounded-xl border border-border bg-accent/40 px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-accent"
+            className="flex w-full items-center justify-center space-x-2 rounded-xl border border-border/50 bg-accent/20 px-3 py-2.5 text-xs font-semibold text-foreground hover:bg-accent"
           >
-            <Download className="h-4 w-4" />
+            <Download className="h-3.5 w-3.5" />
             <span>Export Backup</span>
           </button>
           <button
             onClick={() => logout()}
-            className="inline-flex items-center space-x-1.5 rounded-xl bg-rose-500/15 px-3.5 py-2 text-xs font-semibold text-rose-500 hover:bg-rose-500/25"
+            className="flex w-full items-center justify-center space-x-2 rounded-xl bg-rose-500/10 border border-rose-500/25 px-3 py-2.5 text-xs font-bold text-rose-400 hover:bg-rose-500/20"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-3.5 w-3.5" />
             <span>Sign Out</span>
           </button>
         </div>
-      </div>
+      </aside>
 
-      {/* Navigation Tabs */}
-      <div className="flex items-center space-x-2 overflow-x-auto rounded-2xl border border-border/60 bg-card p-1.5">
-        {[
-          { id: "overview", label: "Overview", icon: Activity },
-          { id: "homepage", label: "Homepage", icon: Sparkles },
-          { id: "events", label: "Events", icon: Calendar },
-          { id: "payouts", label: "Winners & Proofs", icon: Trophy },
-          { id: "claims", label: "Reward Claims", icon: Gift },
-          { id: "staff", label: "Staff Roster", icon: Users },
-          { id: "gallery", label: "Gallery", icon: ImageIcon },
-          { id: "partners", label: "Partners", icon: HeartHandshake },
-          { id: "reviews", label: "Reviews", icon: MessageSquare },
-          { id: "announcements", label: "Announcements", icon: BellRing },
-          { id: "settings", label: "Settings", icon: Sliders },
-          { id: "audit", label: "Audit Logs", icon: ShieldCheck },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`flex items-center space-x-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
-                isActive
-                  ? "bg-rose-500 text-white shadow-md"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}
-            >
-              <Icon className="h-4 w-4" />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* MAIN CONTAINER */}
+      <main className="flex-1 min-w-0 flex flex-col h-screen overflow-y-auto bg-[#030307]">
+        {/* Top Header */}
+        <header className="flex justify-between items-center px-8 py-5 border-b border-border/30 bg-[#05050b]/80 backdrop-blur-md sticky top-0 z-40">
+          <div>
+            <p className="text-[9px] text-rose-500 uppercase tracking-widest font-bold">Console Panel</p>
+            <h1 className="font-serif text-2xl font-bold text-foreground capitalize">
+              {tabLabels[activeTab] || activeTab}
+            </h1>
+          </div>
+          <div className="flex items-center space-x-3 bg-card border border-border/60 px-4 py-2 rounded-2xl shadow-xs">
+            <ShieldCheck className="h-4 w-4 text-rose-500 animate-pulse" />
+            <span className="text-xs font-semibold text-muted-foreground">{userProfile?.displayName || userProfile?.email}</span>
+          </div>
+        </header>
 
-      {/* TAB 1: OVERVIEW */}
-      {activeTab === "overview" && (
-        <div className="grid gap-4 md:grid-cols-4">
-          {[
-            {
-              label: "Active Events",
-              val: eventsList.length,
-              icon: Calendar,
-              color: "text-rose-500",
-            },
-            {
-              label: "Verified Winners",
-              val: winnersList.length,
-              icon: Trophy,
-              color: "text-amber-500",
-            },
-            { label: "Staff Roster", val: staffList.length, icon: Users, color: "text-indigo-500" },
-            {
-              label: "Pending Claims",
-              val: rewardClaimsList.filter((c) => c.status === "pending").length,
-              icon: Gift,
-              color: "text-emerald-500",
-            },
-          ].map((stat, idx) => {
-            const Icon = stat.icon;
-            return (
-              <div key={idx} className="rounded-3xl border border-border/60 bg-card p-6 shadow-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-muted-foreground">{stat.label}</span>
-                  <Icon className={`h-5 w-5 ${stat.color}`} />
-                </div>
-                <p className="mt-3 font-serif text-3xl font-bold text-foreground">{stat.val}</p>
+        {/* Page Inner Content */}
+        <div className="p-8 space-y-6">
+          {/* TAB 1: OVERVIEW */}
+          {activeTab === "overview" && (
+            <div className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-4">
+                {[
+                  {
+                    label: "Active Events",
+                    val: eventsList.length,
+                    icon: Calendar,
+                    color: "text-rose-500",
+                    bg: "bg-rose-500/10",
+                  },
+                  {
+                    label: "Verified Winners",
+                    val: winnersList.length,
+                    icon: Trophy,
+                    color: "text-amber-500",
+                    bg: "bg-amber-500/10",
+                  },
+                  {
+                    label: "Staff Roster",
+                    val: staffList.length,
+                    icon: Users,
+                    color: "text-indigo-500",
+                    bg: "bg-indigo-500/10",
+                  },
+                  {
+                    label: "Pending Claims",
+                    val: rewardClaimsList.filter((c) => c.status === "pending").length,
+                    icon: Gift,
+                    color: "text-emerald-500",
+                    bg: "bg-emerald-500/10",
+                  },
+                ].map((stat, idx) => {
+                  const Icon = stat.icon;
+                  return (
+                    <div key={idx} className="rounded-3xl border border-border/60 bg-[#0c0c12]/50 p-6 flex justify-between items-center relative overflow-hidden backdrop-blur-xl">
+                      <div className="space-y-1">
+                        <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</span>
+                        <p className="font-serif text-3xl font-bold text-foreground">{stat.val}</p>
+                      </div>
+                      <div className={`h-11 w-11 rounded-2xl flex items-center justify-center ${stat.bg} ${stat.color} shrink-0`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
-      )}
+
+              {/* TWO COLUMN WORKSPACE */}
+              <div className="grid gap-6 md:grid-cols-3">
+                {/* Chart Panel */}
+                <div className="md:col-span-2 rounded-3xl border border-border/60 bg-[#0c0c12]/50 p-6 backdrop-blur-xl space-y-4">
+                  <div>
+                    <span className="text-[10px] text-rose-500 uppercase tracking-widest font-bold">Analytics</span>
+                    <h4 className="font-serif text-lg font-bold text-foreground">Rewards distributed over time</h4>
+                  </div>
+                  <div className="h-[300px] w-full pr-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4} />
+                            <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                        <XAxis dataKey="date" stroke="#71717a" fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#71717a" fontSize={10} tickLine={false} axisLine={false} />
+                        <ChartTooltip
+                          contentStyle={{
+                            background: "#0c0c12",
+                            border: "1px solid rgba(255, 255, 255, 0.1)",
+                            borderRadius: "16px",
+                            fontSize: "12px",
+                          }}
+                        />
+                        <Area type="monotone" dataKey="amount" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#colorAmount)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Recent Activity Panel */}
+                <div className="rounded-3xl border border-border/60 bg-[#0c0c12]/50 p-6 backdrop-blur-xl space-y-4">
+                  <div>
+                    <span className="text-[10px] text-rose-500 uppercase tracking-widest font-bold">Activity Feed</span>
+                    <h4 className="font-serif text-lg font-bold text-foreground">Recent actions</h4>
+                  </div>
+                  <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
+                    {auditLogs.slice(0, 5).map((log, idx) => (
+                      <div key={idx} className="flex items-center justify-between border-b border-border/20 pb-3 last:border-0 last:pb-0">
+                        <div className="space-y-0.5">
+                          <p className="text-xs font-semibold text-foreground line-clamp-1">{log.action}</p>
+                          <p className="text-[10px] text-muted-foreground">{new Date(log.timestamp).toLocaleDateString()}</p>
+                        </div>
+                        <span className="rounded bg-rose-500/10 px-2.5 py-0.5 text-[9px] font-bold text-rose-500 uppercase tracking-wider shrink-0">
+                          {log.targetCollection}
+                        </span>
+                      </div>
+                    ))}
+                    {auditLogs.length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-6">No recent actions recorded.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
       {/* TAB 2: EVENTS CMS */}
       {activeTab === "events" && (
@@ -2326,6 +2459,8 @@ export function AdminDashboard() {
           </div>
         </div>
       )}
+        </div>
+      </main>
     </div>
   );
 }
