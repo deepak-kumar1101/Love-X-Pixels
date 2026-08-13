@@ -22,6 +22,8 @@ import {
   previewVoiceRooms,
 } from "@/content/serverPreview";
 import type { PreviewChannelKind } from "@/types/content";
+import { toast } from "sonner";
+import { addFirestoreDoc } from "@/lib/firebase";
 
 const channelIcons: Record<PreviewChannelKind, typeof Hash> = {
   text: Hash,
@@ -225,9 +227,21 @@ function EventsPanel() {
               </div>
             ))}
           </div>
-          {/* TODO(firebase): RSVP writes to an "eventRsvps" collection */}
+          {/* RSVP writes to "eventRsvps" collection */}
           <button
             type="button"
+            onClick={async () => {
+              try {
+                await addFirestoreDoc("eventRsvps", {
+                  eventTitle: previewCountdown.title,
+                  host: previewCountdown.host,
+                  createdAt: new Date().toISOString(),
+                });
+                toast.success("🔔 Reminder set! You will be notified when this event starts.");
+              } catch {
+                toast.error("Failed to set reminder. Please try again.");
+              }
+            }}
             className="mt-7 rounded-full bg-primary px-7 py-3 text-sm font-medium text-primary-foreground transition-transform duration-300 hover:scale-[1.03]"
           >
             Remind me

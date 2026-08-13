@@ -1,4 +1,6 @@
 import { Link } from "@tanstack/react-router";
+import { toast } from "sonner";
+import { addFirestoreDoc } from "@/lib/firebase";
 import { navLinks } from "./Navbar";
 
 export function Footer() {
@@ -12,17 +14,36 @@ export function Footer() {
               A softly moderated community for people who like their internet quiet, kind and
               beautifully made.
             </p>
-            {/* TODO(firebase): newsletter capture — wire this form to a Firebase function */}
+            {/* Newsletter capture — saves to 'newsletter' collection in Firestore */}
             <form
               className="mt-7 grid grid-cols-[minmax(0,1fr)_auto] gap-2"
-              onSubmit={(e) => e.preventDefault()}
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const emailInput = (e.currentTarget.elements.namedItem("footer-email") as HTMLInputElement)?.value;
+                if (!emailInput || !emailInput.includes("@")) {
+                  toast.error("Please enter a valid email address.");
+                  return;
+                }
+                try {
+                  await addFirestoreDoc("newsletter", {
+                    email: emailInput.trim(),
+                    subscribedAt: new Date().toISOString(),
+                  });
+                  toast.success("Subscribed softly! We'll keep you updated.");
+                  (e.target as HTMLFormElement).reset();
+                } catch {
+                  toast.error("Subscription failed. Please try again.");
+                }
+              }}
             >
               <label htmlFor="footer-email" className="sr-only">
                 Email address
               </label>
               <input
                 id="footer-email"
+                name="footer-email"
                 type="email"
+                required
                 placeholder="your@email.com"
                 className="min-w-0 rounded-full border border-border bg-card/80 px-5 py-3 text-sm outline-none transition-shadow placeholder:text-muted-foreground/70 focus:ring-2 focus:ring-ring"
               />
