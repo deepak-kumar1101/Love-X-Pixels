@@ -2,13 +2,13 @@ export interface VisitorLog {
   id: string;
   pagePath: string;
   referrer: string;
-  browser: string;
   device: "desktop" | "mobile" | "tablet";
   country?: string;
   timestamp: string;
   ip?: string;
   uid?: string;
 }
+
 
 export interface AuditLog {
   id: string;

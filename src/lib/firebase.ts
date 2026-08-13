@@ -39,6 +39,10 @@ type Listener<T> = (data: T[]) => void;
 const activeListeners = new Map<string, Set<Listener<any>>>();
 const memoryStore = new Map<string, StoreRecord[]>();
 
+// Track active Supabase realtime channels — ONE per collection to avoid
+// the "cannot add postgres_changes callbacks after subscribe()" error
+const activeChannels = new Map<string, ReturnType<typeof supabase.channel>>();
+
 function getLocalStorageKey(collectionName: string): string {
   return `lovepixels_db_${collectionName}`;
 }
@@ -102,6 +106,7 @@ export function subscribeToCollection<T extends StoreRecord>(
 ): () => void {
   const tableName = toTableName(collectionName);
 
+  // Register this listener
   if (!activeListeners.has(collectionName)) {
     activeListeners.set(collectionName, new Set());
   }
@@ -111,8 +116,9 @@ export function subscribeToCollection<T extends StoreRecord>(
   const initialItems = getCollectionItems<T>(collectionName, fallbackData);
   onData(initialItems);
 
-  // 2. Fetch remote Supabase dataset if configured
-  if (isSupabaseConfigured) {
+  // 2. Fetch remote Supabase dataset if configured (only runs in browser)
+  if (isSupabaseConfigured && typeof window !== "undefined") {
+    // Fire-and-forget fetch for initial remote data
     supabase
       .from(tableName)
       .select("*")
@@ -130,37 +136,51 @@ export function subscribeToCollection<T extends StoreRecord>(
           saveLocalItems(collectionName, mergedList);
           notifySubscribers(collectionName, mergedList);
         }
-      });
-
-    // Subscribe to Supabase postgres_changes
-    const channel = supabase
-      .channel(`public:${tableName}_${collectionName}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: tableName }, async () => {
-        const { data } = await supabase.from(tableName).select("*");
-        if (data && data.length > 0) {
-          const remoteItems = data as unknown as T[];
-          const localUserItems = loadLocalItems<T>(collectionName);
-          const mergedMap = new Map<string, T>();
-
-          fallbackData.forEach((item) => mergedMap.set(item.id, item));
-          localUserItems.forEach((item) => mergedMap.set(item.id, item));
-          remoteItems.forEach((item) => mergedMap.set(item.id, item));
-
-          const mergedList = Array.from(mergedMap.values());
-          saveLocalItems(collectionName, mergedList);
-          notifySubscribers(collectionName, mergedList);
-        }
       })
-      .subscribe();
+      .catch(() => {/* silent — no Supabase tables is fine */});
 
-    return () => {
-      activeListeners.get(collectionName)?.delete(onData);
-      supabase.removeChannel(channel);
-    };
+    // Only create ONE realtime channel per collection — reuse if already exists
+    if (!activeChannels.has(collectionName)) {
+      try {
+        const channel = supabase
+          .channel(`tsr_${tableName}`)
+          .on("postgres_changes", { event: "*", schema: "public", table: tableName }, async () => {
+            try {
+              const { data } = await supabase.from(tableName).select("*");
+              if (data && data.length > 0) {
+                const remoteItems = data as unknown as T[];
+                const localUserItems = loadLocalItems<T>(collectionName);
+                const mergedMap = new Map<string, T>();
+
+                localUserItems.forEach((item) => mergedMap.set(item.id, item));
+                remoteItems.forEach((item) => mergedMap.set(item.id, item));
+
+                const mergedList = Array.from(mergedMap.values());
+                saveLocalItems(collectionName, mergedList);
+                notifySubscribers(collectionName, mergedList);
+              }
+            } catch {/* silent */}
+          })
+          .subscribe();
+        activeChannels.set(collectionName, channel);
+      } catch (err) {
+        console.warn(`[Supabase] Channel setup error for ${collectionName}:`, err);
+      }
+    }
   }
 
+  // Return unsubscribe function — only removes this listener; channel stays alive for other subscribers
   return () => {
     activeListeners.get(collectionName)?.delete(onData);
+
+    // Clean up channel only when no listeners remain
+    if (activeListeners.get(collectionName)?.size === 0) {
+      const ch = activeChannels.get(collectionName);
+      if (ch) {
+        supabase.removeChannel(ch).catch(() => {});
+        activeChannels.delete(collectionName);
+      }
+    }
   };
 }
 
@@ -181,10 +201,12 @@ export async function addFirestoreDoc<T extends StoreRecord>(
 
   // 2. Insert into Supabase in background
   if (isSupabaseConfigured) {
-    const { error } = await supabase.from(tableName).insert(payload);
-    if (error) {
-      console.warn(`[Supabase] Insert notice on ${tableName}:`, error.message);
-    }
+    try {
+      const { error } = await supabase.from(tableName).insert(payload);
+      if (error) {
+        console.warn(`[Supabase] Insert notice on ${tableName}:`, error.message);
+      }
+    } catch {/* silent */}
   }
 
   return id;
@@ -206,13 +228,15 @@ export async function updateFirestoreDoc<T extends StoreRecord>(
 
   // 2. Update Supabase in background
   if (isSupabaseConfigured) {
-    const { error } = await supabase
-      .from(tableName)
-      .update(data as Record<string, unknown>)
-      .eq("id", id);
-    if (error) {
-      console.warn(`[Supabase] Update notice on ${tableName}:`, error.message);
-    }
+    try {
+      const { error } = await supabase
+        .from(tableName)
+        .update(data as Record<string, unknown>)
+        .eq("id", id);
+      if (error) {
+        console.warn(`[Supabase] Update notice on ${tableName}:`, error.message);
+      }
+    } catch {/* silent */}
   }
 }
 
@@ -228,10 +252,12 @@ export async function deleteFirestoreDoc(collectionName: string, id: string): Pr
 
   // 2. Delete from Supabase in background
   if (isSupabaseConfigured) {
-    const { error } = await supabase.from(tableName).delete().eq("id", id);
-    if (error) {
-      console.warn(`[Supabase] Delete notice on ${tableName}:`, error.message);
-    }
+    try {
+      const { error } = await supabase.from(tableName).delete().eq("id", id);
+      if (error) {
+        console.warn(`[Supabase] Delete notice on ${tableName}:`, error.message);
+      }
+    } catch {/* silent */}
   }
 }
 
