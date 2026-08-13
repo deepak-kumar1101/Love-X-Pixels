@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { getCollectionItems } from "@/lib/firebase";
 
 export abstract class BaseRepository<T extends { id: string }> {
   protected collectionName: string;
@@ -15,23 +16,27 @@ export abstract class BaseRepository<T extends { id: string }> {
 
   /** Read all documents with offline fallback and in-memory cache */
   async getAll(fallbackData: T[] = []): Promise<T[]> {
+    const localItems = getCollectionItems<T>(this.collectionName, fallbackData);
+
     if (!isSupabaseConfigured) {
-      return fallbackData;
+      return localItems;
     }
     try {
       const { data, error } = await supabase.from(this.tableName).select("*");
       if (error || !data || data.length === 0) {
-        return fallbackData;
+        return localItems;
       }
-      const items = data.map((item) => {
+      const itemMap = new Map<string, T>();
+      localItems.forEach((item) => itemMap.set(item.id, item));
+      data.forEach((item) => {
         const obj = { id: item.id, ...item } as T;
+        itemMap.set(item.id, obj);
         this.cache.set(item.id, obj);
-        return obj;
       });
-      return items;
+      return Array.from(itemMap.values());
     } catch (err) {
-      console.warn(`[BaseRepository] Error fetching ${this.tableName}, using fallback:`, err);
-      return fallbackData;
+      console.warn(`[BaseRepository] Error fetching ${this.tableName}, using local fallback:`, err);
+      return localItems;
     }
   }
 

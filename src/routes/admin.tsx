@@ -355,7 +355,7 @@ export function AdminDashboard() {
         winnerSelectionStatus: editingEvent.winnerSelectionStatus || "PENDING",
         timeLabel: durationLabel,
         host: editingEvent.host || "Aurelia",
-        reward: editingEvent.reward || "₹1,000",
+        reward: editingEvent.reward || "",
         maxSlots: editingEvent.maxSlots || 50,
         registeredCount: editingEvent.registeredCount || 0,
         remainingSlots: (editingEvent.maxSlots || 50) - (editingEvent.registeredCount || 0),
@@ -1133,11 +1133,12 @@ export function AdminDashboard() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-foreground">Prize Reward</label>
+                  <label className="block text-xs font-bold text-foreground">Reward Detail</label>
                   <input
                     type="text"
-                    value={editingEvent?.reward || "₹1,000"}
+                    value={editingEvent?.reward ?? ""}
                     onChange={(e) => setEditingEvent({ ...editingEvent, reward: e.target.value })}
+                    placeholder="e.g. ₹1,000 + Champion Role / Discord VIP"
                     className="mt-1 w-full rounded-xl border border-border bg-accent/30 px-3 py-2 text-xs font-semibold text-foreground"
                   />
                 </div>

@@ -15,8 +15,6 @@ export class AnalyticsEventService {
       await visitorRepository.logVisit({
         pagePath: typeof window !== "undefined" ? window.location.pathname : "/",
         referrer: eventType,
-        browser: typeof window !== "undefined" ? window.navigator.userAgent : "server",
-        device: "desktop",
         timestamp: new Date().toISOString(),
         ...metadata,
       });

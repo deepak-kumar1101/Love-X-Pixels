@@ -1,4 +1,5 @@
 import { BaseRepository } from "./base.repository";
+import { getCollectionItems, loadLocalItems } from "@/lib/firebase";
 import type {
   EventParticipant,
   EventNotification,
@@ -13,14 +14,22 @@ export class ParticipantRepository extends BaseRepository<EventParticipant> {
   }
 
   async getEventParticipants(eventId: string): Promise<EventParticipant[]> {
-    const all = await this.getAll([]);
-    return all.filter((r) => r.eventId === eventId);
+    const local = getCollectionItems<EventParticipant>("participants", []);
+    const remote = await this.getAll([]);
+    const map = new Map<string, EventParticipant>();
+    local.forEach((item) => map.set(item.id, item));
+    remote.forEach((item) => map.set(item.id, item));
+    return Array.from(map.values()).filter((r) => r.eventId === eventId);
   }
 
   async isUserRegistered(eventId: string, discordId: string): Promise<boolean> {
-    const all = await this.getAll([]);
+    const local = getCollectionItems<EventParticipant>("participants", []);
+    const storedLocal = loadLocalItems<EventParticipant>("participants");
+    const remote = await this.getAll([]);
     const deterministicId = `${eventId}_${discordId}`;
-    return all.some(
+
+    const combined = [...local, ...storedLocal, ...remote];
+    return combined.some(
       (r) =>
         r.id === deterministicId ||
         (r.eventId === eventId && (r.discordId === discordId || (r as any).uid === discordId))

@@ -47,7 +47,7 @@ function getLocalStorageKey(collectionName: string): string {
   return `lovepixels_db_${collectionName}`;
 }
 
-function loadLocalItems<T extends StoreRecord>(collectionName: string): T[] {
+export function loadLocalItems<T extends StoreRecord>(collectionName: string): T[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(getLocalStorageKey(collectionName));
@@ -58,7 +58,7 @@ function loadLocalItems<T extends StoreRecord>(collectionName: string): T[] {
   return [];
 }
 
-function saveLocalItems<T extends StoreRecord>(collectionName: string, items: T[]): void {
+export function saveLocalItems<T extends StoreRecord>(collectionName: string, items: T[]): void {
   memoryStore.set(collectionName, items);
   if (typeof window === "undefined") return;
   try {
@@ -68,7 +68,7 @@ function saveLocalItems<T extends StoreRecord>(collectionName: string, items: T[
   }
 }
 
-function getCollectionItems<T extends StoreRecord>(collectionName: string, fallbackData: T[] = []): T[] {
+export function getCollectionItems<T extends StoreRecord>(collectionName: string, fallbackData: T[] = []): T[] {
   if (memoryStore.has(collectionName)) {
     const mem = memoryStore.get(collectionName) as T[];
     if (mem && mem.length > 0) return mem;

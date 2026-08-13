@@ -18,7 +18,6 @@ export class VisitorService {
       .logVisit({
         pagePath: path,
         referrer: document.referrer || "direct",
-        device,
         timestamp: new Date().toISOString(),
         uid,
       })
