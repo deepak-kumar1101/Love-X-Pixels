@@ -78,7 +78,12 @@ export function Footer() {
               {/* TODO(firebase): social links from remote config */}
               {["Discord", "Instagram", "Pinterest", "Contact"].map((item) => (
                 <li key={item}>
-                  <a href="#" className="transition-colors hover:text-foreground">
+                  <a
+                    href={item === "Discord" ? "https://discord.gg/YFX2tfSZMj" : "#"}
+                    target={item === "Discord" ? "_blank" : undefined}
+                    rel={item === "Discord" ? "noreferrer" : undefined}
+                    className="transition-colors hover:text-foreground"
+                  >
                     {item}
                   </a>
                 </li>

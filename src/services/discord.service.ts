@@ -50,7 +50,7 @@ export class DiscordService {
       const fallback: DiscordGuildData = {
         id: guildId,
         name: "LovePixels",
-        instant_invite: "https://discord.gg/lovepixels",
+        instant_invite: "https://discord.gg/YFX2tfSZMj",
         presence_count: 342,
         channels: [
           { id: "1", name: "💬 general-chat", position: 1 },

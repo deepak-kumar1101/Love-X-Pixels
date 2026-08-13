@@ -43,7 +43,7 @@ export function generateOrganizationJsonLd() {
     name: "LovePixels Community",
     url: "https://lovepixels.vercel.app",
     logo: "https://lovepixels.vercel.app/logo.png",
-    sameAs: ["https://discord.gg/lovepixels"],
+    sameAs: ["https://discord.gg/YFX2tfSZMj"],
     description:
       "A luxury aesthetic online community for voice salons, events, gaming, and creator rewards.",
   };
@@ -81,7 +81,7 @@ export function generateEventJsonLd(event: {
     eventStatus: "https://schema.org/EventScheduled",
     location: {
       "@type": "VirtualLocation",
-      url: "https://discord.gg/lovepixels",
+      url: "https://discord.gg/YFX2tfSZMj",
     },
     organizer: {
       "@type": "Organization",

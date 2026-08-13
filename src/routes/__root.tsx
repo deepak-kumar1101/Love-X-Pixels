@@ -8,7 +8,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { Navbar } from "@/components/site/Navbar";
@@ -16,9 +16,15 @@ import { Footer } from "@/components/site/Footer";
 import { Background } from "@/components/site/Background";
 import { PageTransition } from "@/components/site/PageTransition";
 import { LoadingScreen } from "@/components/site/LoadingScreen";
+import { WinnerCelebrationModal } from "@/components/site/WinnerCelebrationModal";
+import { ClaimRewardModal } from "@/components/site/ClaimRewardModal";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RBACProvider } from "@/contexts/RBACContext";
+import { useAuth } from "@/hooks/useAuth";
 import { useVisitorTracker } from "@/hooks/useVisitorTracker";
+import { subscribeToCollection } from "@/lib/firebase";
+import { EventLifecycleService } from "@/services/event-lifecycle.service";
+import type { WinnerAnnouncement, RewardClaim, ExtendedCommunityEvent } from "@/models/event-system.model";
 
 function NotFoundComponent() {
   return (
@@ -134,15 +140,88 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootContent() {
   useVisitorTracker();
+  const { user } = useAuth();
   const routerState = useRouterState();
   const pathname = routerState?.location?.pathname ?? "";
   const isAdminPath = pathname.startsWith("/admin");
+
+  const [announcements, setAnnouncements] = useState<WinnerAnnouncement[]>([]);
+  const [claims, setClaims] = useState<RewardClaim[]>([]);
+  const [selectedClaimAnnouncement, setSelectedClaimAnnouncement] = useState<WinnerAnnouncement | null>(null);
+  const [isClaimModalOpen, setIsClaimModalOpen] = useState(false);
+  const [isWinnerPopupClosed, setIsWinnerPopupClosed] = useState(false);
+
+  useEffect(() => {
+    const unsubEvents = subscribeToCollection<ExtendedCommunityEvent>("events", [], (list) => {
+      EventLifecycleService.checkAndFinalizeEvents(list);
+    });
+    const unsubAnnounce = subscribeToCollection<WinnerAnnouncement>("winnerAnnouncements", [], (list) => {
+      setAnnouncements(list);
+    });
+    const unsubClaims = subscribeToCollection<RewardClaim>("rewardClaims", [], (list) => {
+      setClaims(list);
+    });
+
+    return () => {
+      unsubEvents();
+      unsubAnnounce();
+      unsubClaims();
+    };
+  }, []);
+
+  // Compute WINNER-ONLY Popup logic
+  // Only the winning user receives the reward claim popup. Normal users do NOT see this popup.
+  const userDiscordId = user?.id || user?.uid || (user?.user_metadata?.sub as string);
+  const winningAnnouncement = userDiscordId
+    ? announcements.find((ann) => {
+        if (ann.status !== "active") return false;
+        // Check 24-hour expiry
+        if (new Date().toISOString() >= ann.expiresAt) return false;
+
+        const isWinnerMatch =
+          ann.winnerDiscordId === userDiscordId ||
+          (user?.email && ann.winnerDiscordId === user.email) ||
+          (user?.displayName && ann.winnerName === user.displayName);
+
+        if (!isWinnerMatch) return false;
+
+        // Check if user has already created a ticket/claim for this event
+        const hasClaimed = claims.some(
+          (c) =>
+            c.eventId === ann.eventId &&
+            (c.discordId === userDiscordId || c.winnerName === ann.winnerName)
+        );
+
+        return !hasClaimed;
+      })
+    : null;
+
+  const showWinnerPopup = Boolean(winningAnnouncement) && !isWinnerPopupClosed;
 
   return (
     <>
       <Background />
       <LoadingScreen />
       {!isAdminPath && <Navbar />}
+
+      {/* Winner-Only Website Popup — Only displayed to the authenticated winning user */}
+      <WinnerCelebrationModal
+        isOpen={showWinnerPopup}
+        announcement={winningAnnouncement ?? null}
+        onClose={() => setIsWinnerPopupClosed(true)}
+        onClaimTicket={(ann) => {
+          setSelectedClaimAnnouncement(ann);
+          setIsClaimModalOpen(true);
+        }}
+      />
+
+      {/* Claim Reward Ticket Flow */}
+      <ClaimRewardModal
+        announcement={selectedClaimAnnouncement}
+        isOpen={isClaimModalOpen}
+        onClose={() => setIsClaimModalOpen(false)}
+      />
+
       <main className="min-h-screen">
         <PageTransition>
           <Outlet />

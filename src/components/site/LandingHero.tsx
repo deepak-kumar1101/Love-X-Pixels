@@ -30,7 +30,7 @@ const particles = Array.from({ length: 22 }, (_, i) => ({
 
 export function LandingHero({
   slides = defaultSlides,
-  discordUrl = "#",
+  discordUrl = "https://discord.gg/YFX2tfSZMj",
 }: {
   slides?: HeroSlide[];
   discordUrl?: string;

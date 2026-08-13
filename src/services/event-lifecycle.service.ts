@@ -33,9 +33,10 @@ export class EventLifecycleService {
       return { success: false, message: "Authentication required. Please sign in with Discord." };
     }
 
+    // Backend Duplicate Entry Check — User can enter an event ONLY ONCE
     const isAlready = await participantRepository.isUserRegistered(event.id, discordId);
     if (isAlready) {
-      return { success: false, message: "You are already registered for this event!" };
+      return { success: false, message: "You have already entered this event." };
     }
 
     const maxSlots = event.maxSlots || event.capacity || 50;
@@ -116,78 +117,120 @@ export class EventLifecycleService {
     });
   }
 
-  /** Random Winner Selection Algorithm */
+  /** Automatic Random Winner Selection Algorithm — Called when an event ends */
   static async selectRandomWinner(
     event: ExtendedCommunityEvent,
   ): Promise<WinnerAnnouncement | null> {
-    const participants = await participantRepository.getEventParticipants(event.id);
-    if (!participants || participants.length === 0) {
-      console.warn("[EventLifecycleService] No registered participants to select winner from.");
+    // Atomicity check: Prevent re-running winner selection on the same event
+    if (event.winnerSelected || event.winnerId) {
+      console.log(`[EventLifecycleService] Winner already selected for event: ${event.title}`);
       return null;
     }
 
-    // Random selection
+    const participants = await participantRepository.getEventParticipants(event.id);
+    if (!participants || participants.length === 0) {
+      console.warn(`[EventLifecycleService] No registered participants for event: ${event.title}`);
+      // Mark as completed without winner if no participants
+      await updateFirestoreDoc("events", event.id, {
+        status: "completed",
+        winnerSelected: true,
+      });
+      return null;
+    }
+
+    // Secure Random Selection
     const randomIndex = Math.floor(Math.random() * participants.length);
     const winner = participants[randomIndex];
 
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + 24 * 3600000).toISOString(); // 24 hours expiry
+    // Exactly 24-hour announcement expiry
+    const expiresAt = new Date(now.getTime() + 24 * 3600 * 1000).toISOString();
+
+    const winnerName = winner.displayName || winner.username || "Community Winner";
+    const prizeWon = event.reward || "₹1,000 + Champion Role";
+
+    const congratulationsMsg = `Congratulations, ${winnerName}! 🎉 You have won ${prizeWon} in ${event.title}. Thank you for participating in LovePixels. Your reward is ready to be claimed.`;
 
     const announcementData: Omit<WinnerAnnouncement, "id"> = {
       eventId: event.id,
       winnerDiscordId: winner.discordId,
-      winnerName: winner.displayName || winner.username,
+      winnerName,
       avatar: winner.avatar,
       eventName: event.title,
-      prizeWon: event.reward || "₹1,000 + Champion Role",
-      congratulationsMsg: `🏆 Congratulations ${winner.displayName}! You won ${event.reward || "the prize"} in ${event.title}!`,
+      prizeWon,
+      congratulationsMsg,
       createdAt: now.toISOString(),
       expiresAt,
       status: "active",
     };
 
+    // 1. Create 24-hour Winner Announcement
     const annId = await winnerAnnouncementRepository.add(announcementData);
 
-    // Record in Winner History
+    // 2. Store Permanent Winner Record in winnerHistory
     await winnerHistoryRepository.add({
       eventId: event.id,
       winnerDiscordId: winner.discordId,
-      winnerName: winner.displayName || winner.username,
+      winnerName,
       avatar: winner.avatar,
-      prize: event.reward || "Prize Winner",
+      prize: prizeWon,
       wonAt: now.toISOString(),
       participantsCount: participants.length,
     });
 
-    // Update event status
+    // 3. Store Permanent Record in Payouts collection (Hall of Fame)
+    await addFirestoreDoc("payouts", {
+      name: winnerName,
+      handle: `@${winner.username.toLowerCase()}`,
+      amount: prizeWon,
+      reason: `Event Winner: ${event.title}`,
+      paidAt: new Date().toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }),
+      proofImageUrl: winner.avatar || undefined,
+    });
+
+    // 4. Lock Event to prevent duplicate winner generation
     await updateFirestoreDoc("events", event.id, {
       status: "completed",
+      winnerSelected: true,
       winnerId: winner.discordId,
-      winnerName: winner.displayName || winner.username,
+      winnerName,
       winnerAvatar: winner.avatar,
     });
 
-    // Create automatic reward claim entry
-    await rewardClaimRepository.add({
-      eventId: event.id,
-      winnerName: winner.displayName || winner.username,
-      discordId: winner.discordId,
-      eventName: event.title,
-      prize: event.reward || "Prize Reward",
-      reason: "Reward Claim",
-      status: "pending",
-      createdAt: now.toISOString(),
-    });
-
-    // Broadcast community notification
+    // 5. Broadcast community notification
     await NotificationService.publishNotification({
       title: "🏆 Winner Announced!",
-      message: `${winner.displayName} won ${event.reward || "the event"} in ${event.title}!`,
+      message: `${winnerName} won ${prizeWon} in ${event.title}!`,
       type: "winner",
       link: "/payouts",
     });
 
     return { id: annId, ...announcementData };
+  }
+
+  /** Background task: Check for ended events and trigger automatic random winner selection */
+  static async checkAndFinalizeEvents(eventsList: ExtendedCommunityEvent[]): Promise<void> {
+    const now = new Date();
+    for (const event of eventsList) {
+      if (event.winnerSelected || event.winnerId) continue;
+
+      const isEnded =
+        event.status === "past" ||
+        event.status === "completed" ||
+        (event.startsAt && new Date(event.startsAt).getTime() < now.getTime() - 3600 * 1000);
+
+      if (isEnded) {
+        try {
+          await this.selectRandomWinner(event);
+        } catch (err) {
+          console.error(`[EventLifecycleService] Error finalizing event ${event.id}:`, err);
+        }
+      }
+    }
   }
 
   /** Complete Payout Claim & Automatically Generate Public Review */

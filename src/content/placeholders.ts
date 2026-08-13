@@ -90,5 +90,5 @@ export const placeholders = {
   siteTitle: "LovePixels",
   siteDescription:
     "A soft, luxurious Discord community for creatives — salons, listening rooms, galleries and monthly creator payouts.",
-  discordInviteUrl: "https://discord.gg",
+  discordInviteUrl: "https://discord.gg/YFX2tfSZMj",
 };

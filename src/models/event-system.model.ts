@@ -14,6 +14,7 @@ export interface ExtendedCommunityEvent extends CommunityEvent {
   winnerId?: string;
   winnerName?: string;
   winnerAvatar?: string;
+  winnerSelected?: boolean;
 }
 
 export interface EventParticipant {
