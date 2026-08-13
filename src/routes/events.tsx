@@ -98,19 +98,20 @@ function EventsPage() {
     toast.success("🔔 Subscribed! You will be notified when this event goes live.");
   };
 
-  // Classify events based on current time
-  const now = new Date();
+  // Classify events based on duration and server end times
+  const now = Date.now();
   const classifiedEvents = eventsList.map((e) => {
-    if (!e.startsAt) return e;
-    const start = new Date(e.startsAt);
-    const end = e.endsAt ? new Date(e.endsAt) : new Date(start.getTime() + 3 * 3600 * 1000);
+    const startTime = e.startsAt ? new Date(e.startsAt).getTime() : now;
+    const durationMs = (e.durationHours || 24) * 3600 * 1000;
+    const endTime = e.endsAt ? new Date(e.endsAt).getTime() : startTime + durationMs;
+
     let status: ExtendedCommunityEvent["status"] = e.status;
-    if (now >= start && now <= end) {
-      status = "live";
-    } else if (now < start) {
-      status = "upcoming";
-    } else if (now > end) {
+    if (e.winnerName || e.winnerSelected || now >= endTime) {
       status = "past";
+    } else if (now >= startTime && now < endTime) {
+      status = "live";
+    } else if (now < startTime) {
+      status = "upcoming";
     }
     return { ...e, status };
   });

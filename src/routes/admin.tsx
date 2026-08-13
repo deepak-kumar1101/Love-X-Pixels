@@ -332,22 +332,28 @@ export function AdminDashboard() {
     if (!editingEvent?.title) return;
 
     try {
-      const startsAt = editingEvent.startsAt || new Date().toISOString();
-      const endsAt = editingEvent.endsAt || "";
-      const timeLabel = generateTimeLabel(startsAt, endsAt);
-      const computedStatus = EventAutomationService.calculateEventStatus(
-        { startsAt, endsAt } as CommunityEvent,
-        new Date(),
-      );
+      const now = new Date();
+      const startsAt = editingEvent.startsAt || now.toISOString();
+      const durationHours = Number(editingEvent.durationHours) || 24;
+      const durationMs = durationHours * 3600 * 1000;
+
+      const calculatedEndsAt =
+        editingEvent.endsAt || new Date(new Date(startsAt).getTime() + durationMs).toISOString();
+
+      const durationLabel = `${durationHours} Hour${durationHours === 1 ? "" : "s"}`;
+      const isEnded = new Date(calculatedEndsAt).getTime() <= now.getTime();
+      const status = isEnded ? "past" : "live";
 
       const payload = {
         title: editingEvent.title,
         description: editingEvent.description || "",
         startsAt,
-        endsAt,
-        autoSelectWinner: editingEvent.autoSelectWinner !== false,
-        autoSelectedWinnerDone: editingEvent.autoSelectedWinnerDone || false,
-        timeLabel: editingEvent.timeLabel || timeLabel,
+        endsAt: calculatedEndsAt,
+        durationHours,
+        durationLabel,
+        autoSelectWinner: true,
+        winnerSelectionStatus: editingEvent.winnerSelectionStatus || "PENDING",
+        timeLabel: durationLabel,
         host: editingEvent.host || "Aurelia",
         reward: editingEvent.reward || "₹1,000",
         maxSlots: editingEvent.maxSlots || 50,
@@ -356,17 +362,17 @@ export function AdminDashboard() {
         difficulty: editingEvent.difficulty || "Medium",
         rules: editingEvent.rules || ["Follow server guidelines"],
         bannerUrl: editingEvent.bannerUrl || "",
-        registrationOpen: editingEvent.registrationOpen !== false,
-        status: editingEvent.winnerName ? "past" : computedStatus,
-        updatedAt: new Date().toISOString(),
+        registrationOpen: !isEnded && editingEvent.registrationOpen !== false,
+        status: editingEvent.winnerName ? "past" : status,
+        updatedAt: now.toISOString(),
       };
 
       if (editingEvent.id) {
         await updateFirestoreDoc("events", editingEvent.id, payload);
         toast.success(`Updated Event: ${editingEvent.title}`);
       } else {
-        await addFirestoreDoc("events", { ...payload, createdAt: new Date().toISOString() });
-        toast.success(`Created Event: ${editingEvent.title}`);
+        await addFirestoreDoc("events", { ...payload, createdAt: now.toISOString() });
+        toast.success(`Created Event: ${editingEvent.title} (${durationLabel})`);
       }
       setIsEventModalOpen(false);
       setEditingEvent(null);
@@ -1038,6 +1044,35 @@ export function AdminDashboard() {
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-bold text-foreground">
+                  Event Duration (Auto-Calculates End Time)
+                </label>
+                <select
+                  value={editingEvent?.durationHours || 24}
+                  onChange={(e) => {
+                    const hours = Number(e.target.value);
+                    const startIso = editingEvent?.startsAt || new Date().toISOString();
+                    const endIso = new Date(new Date(startIso).getTime() + hours * 3600 * 1000).toISOString();
+                    setEditingEvent({
+                      ...editingEvent,
+                      durationHours: hours,
+                      durationLabel: `${hours} Hour${hours === 1 ? "" : "s"}`,
+                      endsAt: endIso,
+                    });
+                  }}
+                  className="mt-1 w-full rounded-xl border border-border bg-accent/30 px-3 py-2 text-xs font-semibold text-foreground"
+                >
+                  <option value={1}>1 Hour</option>
+                  <option value={6}>6 Hours</option>
+                  <option value={12}>12 Hours</option>
+                  <option value={24}>24 Hours (Default)</option>
+                  <option value={48}>48 Hours (2 Days)</option>
+                  <option value={72}>72 Hours (3 Days)</option>
+                  <option value={168}>7 Days (1 Week)</option>
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-foreground">
@@ -1048,11 +1083,12 @@ export function AdminDashboard() {
                     value={toLocalDateTimeInputString(editingEvent?.startsAt)}
                     onChange={(e) => {
                       const iso = fromLocalDateTimeInputString(e.target.value);
-                      const timeLabel = generateTimeLabel(iso, editingEvent?.endsAt);
+                      const hours = editingEvent?.durationHours || 24;
+                      const endIso = new Date(new Date(iso).getTime() + hours * 3600 * 1000).toISOString();
                       setEditingEvent({
                         ...editingEvent,
                         startsAt: iso,
-                        timeLabel,
+                        endsAt: endIso,
                       });
                     }}
                     className="mt-1 w-full rounded-xl border border-border bg-accent/30 px-3 py-2 text-xs font-semibold text-foreground"
@@ -1060,18 +1096,16 @@ export function AdminDashboard() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-foreground">
-                    Event End Time (Auto-Winner Target)
+                    Event End Time (Auto-Calculated)
                   </label>
                   <input
                     type="datetime-local"
                     value={toLocalDateTimeInputString(editingEvent?.endsAt)}
                     onChange={(e) => {
                       const iso = fromLocalDateTimeInputString(e.target.value);
-                      const timeLabel = generateTimeLabel(editingEvent?.startsAt, iso);
                       setEditingEvent({
                         ...editingEvent,
                         endsAt: iso,
-                        timeLabel,
                       });
                     }}
                     className="mt-1 w-full rounded-xl border border-border bg-accent/30 px-3 py-2 text-xs font-semibold text-foreground"

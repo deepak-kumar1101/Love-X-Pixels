@@ -13,12 +13,18 @@ export class ParticipantRepository extends BaseRepository<EventParticipant> {
   }
 
   async getEventParticipants(eventId: string): Promise<EventParticipant[]> {
-    return this.queryWhere("eventId", "==", eventId);
+    const all = await this.getAll([]);
+    return all.filter((r) => r.eventId === eventId);
   }
 
   async isUserRegistered(eventId: string, discordId: string): Promise<boolean> {
-    const records = await this.queryWhere("eventId", "==", eventId);
-    return records.some((r) => r.discordId === discordId);
+    const all = await this.getAll([]);
+    const deterministicId = `${eventId}_${discordId}`;
+    return all.some(
+      (r) =>
+        r.id === deterministicId ||
+        (r.eventId === eventId && (r.discordId === discordId || (r as any).uid === discordId))
+    );
   }
 }
 

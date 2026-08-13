@@ -14,16 +14,30 @@ import { useEffect, useState } from "react";
 import type { ExtendedCommunityEvent } from "@/models/event-system.model";
 
 /**
- * Countdown placeholder — purely presentational, derived from `startsAt`.
- * Renders neutral dashes on the server so hydration stays stable.
+ * Live Countdown Timer — derived from server-based endsAt / durationHours.
  */
-function useCountdown(target: string) {
+function useCountdown(event: ExtendedCommunityEvent) {
   const [parts, setParts] = useState<{ d: string; h: string; m: string; s: string } | null>(null);
 
   useEffect(() => {
     const pad = (n: number) => String(Math.max(0, n)).padStart(2, "0");
     const tick = () => {
-      const diff = new Date(target).getTime() - Date.now();
+      const now = Date.now();
+      let targetTime = 0;
+
+      if (event.endsAt) {
+        targetTime = new Date(event.endsAt).getTime();
+      } else if (event.startsAt) {
+        const durationMs = (event.durationHours || 24) * 3600 * 1000;
+        targetTime = new Date(event.startsAt).getTime() + durationMs;
+      }
+
+      if (targetTime === 0) {
+        setParts({ d: "00", h: "00", m: "00", s: "00" });
+        return;
+      }
+
+      const diff = targetTime - now;
       const clamped = Math.max(0, diff);
       setParts({
         d: pad(Math.floor(clamped / 86400000)),
@@ -35,7 +49,7 @@ function useCountdown(target: string) {
     tick();
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
-  }, [target]);
+  }, [event.startsAt, event.endsAt, event.durationHours]);
 
   return parts;
 }
@@ -49,17 +63,22 @@ function CountdownUnit({ value, label }: { value: string; label: string }) {
   );
 }
 
-function Countdown({ startsAt, ended }: { startsAt: string; ended?: boolean }) {
-  const parts = useCountdown(startsAt);
+function Countdown({ event, ended }: { event: ExtendedCommunityEvent; ended?: boolean }) {
+  const parts = useCountdown(event);
   if (ended) {
     return (
-      <p className="text-xs tracking-widest text-muted-foreground uppercase">Event concluded</p>
+      <div className="flex items-center gap-2">
+        <CountdownUnit value="00" label="hrs" />
+        <CountdownUnit value="00" label="min" />
+        <CountdownUnit value="00" label="sec" />
+        <span className="ml-2 text-xs font-bold text-rose-500 uppercase tracking-wider">ENDED</span>
+      </div>
     );
   }
   const p = parts ?? { d: "--", h: "--", m: "--", s: "--" };
   return (
     <div className="flex gap-2">
-      <CountdownUnit value={p.d} label="days" />
+      {Number(p.d) > 0 && <CountdownUnit value={p.d} label="days" />}
       <CountdownUnit value={p.h} label="hrs" />
       <CountdownUnit value={p.m} label="min" />
       <CountdownUnit value={p.s} label="sec" />
@@ -83,7 +102,8 @@ function ParticipantStack({ names }: { names: string[] }) {
   );
 }
 
-function formatDate(iso: string) {
+function formatDate(iso?: string) {
+  if (!iso) return "Date TBD";
   return new Date(iso).toLocaleDateString("en-GB", {
     day: "numeric",
     month: "long",
@@ -106,8 +126,14 @@ export function EventCard({
   onViewDetails?: (event: ExtendedCommunityEvent) => void;
   isRegistered?: boolean;
 }) {
-  const past = event.status === "past" || event.status === "completed";
-  const isLive = event.status === "live";
+  const now = Date.now();
+  const startTime = event.startsAt ? new Date(event.startsAt).getTime() : now;
+  const durationMs = (event.durationHours || 24) * 3600 * 1000;
+  const endTime = event.endsAt ? new Date(event.endsAt).getTime() : startTime + durationMs;
+
+  const past = event.status === "past" || event.status === "completed" || now >= endTime;
+  const isLive = !past && (event.status === "live" || now >= startTime);
+
   const maxSlots = event.maxSlots || event.capacity || 50;
   const registeredCount = event.registeredCount || event.participants || 0;
   const remainingSlots = Math.max(0, maxSlots - registeredCount);
@@ -137,20 +163,26 @@ export function EventCard({
         <div className="absolute inset-0 bg-gradient-to-t from-background/85 via-background/10 to-transparent" />
         <div className="absolute top-4 left-4 flex flex-wrap gap-2">
           <span
-            className={`glass-strong rounded-full px-3 py-1 text-xs font-semibold capitalize ${
-              isLive ? "text-primary font-bold" : "text-foreground"
+            className={`glass-strong rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider ${
+              past
+                ? "bg-rose-500/20 text-rose-400"
+                : isLive
+                  ? "bg-emerald-500/20 text-emerald-400 font-bold"
+                  : "text-foreground"
             }`}
           >
-            {isLive ? (
+            {past ? (
+              "ENDED"
+            ) : isLive ? (
               <span className="flex items-center gap-1.5">
                 <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/70" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/70" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
                 </span>
                 LIVE NOW
               </span>
             ) : (
-              event.status
+              "UPCOMING"
             )}
           </span>
           {event.reward ? (
@@ -175,7 +207,8 @@ export function EventCard({
             <CalendarDays className="h-3.5 w-3.5" /> {formatDate(event.startsAt)}
           </li>
           <li className="flex items-center gap-1.5">
-            <Clock className="h-3.5 w-3.5" /> {event.timeLabel || "8:00 PM IST"}
+            <Clock className="h-3.5 w-3.5" />{" "}
+            {event.durationLabel || `${event.durationHours || 24} Hours`}
           </li>
           <li className="flex items-center gap-1.5">
             <Users className="h-3.5 w-3.5" /> Hosted by {event.host}
@@ -183,7 +216,7 @@ export function EventCard({
         </ul>
 
         <div className="mt-auto grid gap-5">
-          <Countdown startsAt={event.startsAt} ended={past} />
+          <Countdown event={event} ended={past} />
 
           <div className="grid gap-2.5">
             <div className="flex items-center justify-between gap-4">
@@ -221,7 +254,7 @@ export function EventCard({
               </div>
             ) : past ? (
               <div className="flex flex-1 items-center justify-center rounded-xl bg-muted py-2.5 text-xs font-medium text-muted-foreground">
-                Concluded
+                Participation Closed (Ended)
               </div>
             ) : isFull ? (
               <div className="flex flex-1 items-center justify-center space-x-1 rounded-xl bg-rose-500/15 py-2.5 text-xs font-bold text-rose-500">

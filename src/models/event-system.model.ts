@@ -15,6 +15,9 @@ export interface ExtendedCommunityEvent extends CommunityEvent {
   winnerName?: string;
   winnerAvatar?: string;
   winnerSelected?: boolean;
+  winnerSelectionStatus?: "PENDING" | "PROCESSING" | "COMPLETED";
+  durationHours?: number;
+  durationLabel?: string;
 }
 
 export interface EventParticipant {

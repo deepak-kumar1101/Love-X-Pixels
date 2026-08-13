@@ -33,7 +33,17 @@ export class EventLifecycleService {
       return { success: false, message: "Authentication required. Please sign in with Discord." };
     }
 
-    // Backend Duplicate Entry Check — User can enter an event ONLY ONCE
+    // Check if event is still active
+    const now = Date.now();
+    const startTime = event.startsAt ? new Date(event.startsAt).getTime() : now;
+    const durationMs = (event.durationHours || 24) * 3600 * 1000;
+    const endTime = event.endsAt ? new Date(event.endsAt).getTime() : startTime + durationMs;
+
+    if (now >= endTime || event.status === "past" || event.status === "completed") {
+      return { success: false, message: "This event has already ended." };
+    }
+
+    // Backend Atomic Duplicate Entry Check — Deterministic ID (eventId_userId)
     const isAlready = await participantRepository.isUserRegistered(event.id, discordId);
     if (isAlready) {
       return { success: false, message: "You have already entered this event." };
@@ -57,8 +67,10 @@ export class EventLifecycleService {
 
     const avatar = user.photoURL || (user.user_metadata?.avatar_url as string) || undefined;
 
-    // Register participant
-    const participantData: Omit<EventParticipant, "id"> = {
+    // Register participant with deterministic document ID to prevent simultaneous race conditions
+    const deterministicId = `${event.id}_${discordId}`;
+    const participantData: EventParticipant = {
+      id: deterministicId,
       eventId: event.id,
       discordId,
       username: user.email?.split("@")[0] || displayName,
@@ -68,7 +80,7 @@ export class EventLifecycleService {
       status: "registered",
     };
 
-    await participantRepository.add(participantData);
+    await addFirestoreDoc("participants", participantData);
 
     // Update event slot counters
     const newRegistered = registeredCount + 1;
@@ -122,10 +134,15 @@ export class EventLifecycleService {
     event: ExtendedCommunityEvent,
   ): Promise<WinnerAnnouncement | null> {
     // Atomicity check: Prevent re-running winner selection on the same event
-    if (event.winnerSelected || event.winnerId) {
+    if (event.winnerSelected || event.winnerId || event.winnerSelectionStatus === "COMPLETED") {
       console.log(`[EventLifecycleService] Winner already selected for event: ${event.title}`);
       return null;
     }
+
+    // Atomically mark status as PROCESSING
+    await updateFirestoreDoc("events", event.id, {
+      winnerSelectionStatus: "PROCESSING",
+    });
 
     const participants = await participantRepository.getEventParticipants(event.id);
     if (!participants || participants.length === 0) {
@@ -134,11 +151,12 @@ export class EventLifecycleService {
       await updateFirestoreDoc("events", event.id, {
         status: "completed",
         winnerSelected: true,
+        winnerSelectionStatus: "COMPLETED",
       });
       return null;
     }
 
-    // Secure Random Selection
+    // Secure Random Selection from actual registered participants
     const randomIndex = Math.floor(Math.random() * participants.length);
     const winner = participants[randomIndex];
 
@@ -149,7 +167,7 @@ export class EventLifecycleService {
     const winnerName = winner.displayName || winner.username || "Community Winner";
     const prizeWon = event.reward || "₹1,000 + Champion Role";
 
-    const congratulationsMsg = `Congratulations, ${winnerName}! 🎉 You have won ${prizeWon} in ${event.title}. Thank you for participating in LovePixels. Your reward is ready to be claimed.`;
+    const congratulationsMsg = `Congratulations, @${winnerName}! 🎉 You have won ${prizeWon} in our ${event.title} event. Thank you for participating in LovePixels. Create a ticket to claim your reward.`;
 
     const announcementData: Omit<WinnerAnnouncement, "id"> = {
       eventId: event.id,
@@ -164,7 +182,7 @@ export class EventLifecycleService {
       status: "active",
     };
 
-    // 1. Create 24-hour Winner Announcement
+    // 1. Create 24-hour Winner Announcement (Appears in Payouts -> Winners)
     const annId = await winnerAnnouncementRepository.add(announcementData);
 
     // 2. Store Permanent Winner Record in winnerHistory
@@ -192,10 +210,11 @@ export class EventLifecycleService {
       proofImageUrl: winner.avatar || undefined,
     });
 
-    // 4. Lock Event to prevent duplicate winner generation
+    // 4. Lock Event permanently to prevent duplicate winner generation
     await updateFirestoreDoc("events", event.id, {
       status: "completed",
       winnerSelected: true,
+      winnerSelectionStatus: "COMPLETED",
       winnerId: winner.discordId,
       winnerName,
       winnerAvatar: winner.avatar,
@@ -204,7 +223,7 @@ export class EventLifecycleService {
     // 5. Broadcast community notification
     await NotificationService.publishNotification({
       title: "🏆 Winner Announced!",
-      message: `${winnerName} won ${prizeWon} in ${event.title}!`,
+      message: `@${winnerName} won ${prizeWon} in ${event.title}!`,
       type: "winner",
       link: "/payouts",
     });
@@ -214,14 +233,22 @@ export class EventLifecycleService {
 
   /** Background task: Check for ended events and trigger automatic random winner selection */
   static async checkAndFinalizeEvents(eventsList: ExtendedCommunityEvent[]): Promise<void> {
-    const now = new Date();
+    const now = Date.now();
     for (const event of eventsList) {
-      if (event.winnerSelected || event.winnerId) continue;
+      if (event.winnerSelected || event.winnerId || event.winnerSelectionStatus === "COMPLETED") continue;
+
+      let endTime = 0;
+      if (event.endsAt) {
+        endTime = new Date(event.endsAt).getTime();
+      } else if (event.startsAt) {
+        const durationMs = (event.durationHours || 24) * 3600 * 1000;
+        endTime = new Date(event.startsAt).getTime() + durationMs;
+      }
 
       const isEnded =
+        (endTime > 0 && now >= endTime) ||
         event.status === "past" ||
-        event.status === "completed" ||
-        (event.startsAt && new Date(event.startsAt).getTime() < now.getTime() - 3600 * 1000);
+        event.status === "completed";
 
       if (isEnded) {
         try {

@@ -151,8 +151,11 @@ function RootContent() {
   const [isClaimModalOpen, setIsClaimModalOpen] = useState(false);
   const [isWinnerPopupClosed, setIsWinnerPopupClosed] = useState(false);
 
+  const [eventsList, setEventsList] = useState<ExtendedCommunityEvent[]>([]);
+
   useEffect(() => {
     const unsubEvents = subscribeToCollection<ExtendedCommunityEvent>("events", [], (list) => {
+      setEventsList(list);
       EventLifecycleService.checkAndFinalizeEvents(list);
     });
     const unsubAnnounce = subscribeToCollection<WinnerAnnouncement>("winnerAnnouncements", [], (list) => {
@@ -162,12 +165,19 @@ function RootContent() {
       setClaims(list);
     });
 
+    const timer = setInterval(() => {
+      if (eventsList.length > 0) {
+        EventLifecycleService.checkAndFinalizeEvents(eventsList);
+      }
+    }, 5000);
+
     return () => {
       unsubEvents();
       unsubAnnounce();
       unsubClaims();
+      clearInterval(timer);
     };
-  }, []);
+  }, [eventsList]);
 
   // Compute WINNER-ONLY Popup logic
   // Only the winning user receives the reward claim popup. Normal users do NOT see this popup.
