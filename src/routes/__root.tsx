@@ -8,7 +8,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { Navbar } from "@/components/site/Navbar";
@@ -22,9 +22,9 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { RBACProvider } from "@/contexts/RBACContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useVisitorTracker } from "@/hooks/useVisitorTracker";
-import { subscribeToCollection } from "@/lib/firebase";
+import { subscribeToCollection, loadLocalItems } from "@/lib/firebase";
 import { EventLifecycleService } from "@/services/event-lifecycle.service";
-import type { WinnerAnnouncement, RewardClaim, ExtendedCommunityEvent } from "@/models/event-system.model";
+import type { WinnerAnnouncement, RewardClaim, ExtendedCommunityEvent, EventParticipant } from "@/models/event-system.model";
 
 function NotFoundComponent() {
   return (
@@ -140,7 +140,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootContent() {
   useVisitorTracker();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const routerState = useRouterState();
   const pathname = routerState?.location?.pathname ?? "";
   const isAdminPath = pathname.startsWith("/admin");
@@ -182,31 +182,47 @@ function RootContent() {
   }, []);
 
   // Compute WINNER-ONLY Popup logic
-  // Only the winning user receives the reward claim popup. Normal users do NOT see this popup.
-  const userDiscordId = user?.id || user?.uid || (user?.user_metadata?.sub as string);
-  const winningAnnouncement = userDiscordId
-    ? announcements.find((ann) => {
-        if (ann.status !== "active") return false;
-        // Check 24-hour expiry
-        if (new Date().toISOString() >= ann.expiresAt) return false;
+  // Only the winning user receives the reward claim popup.
+  const userDiscordId = user?.id || user?.uid || userProfile?.discordId || (user?.user_metadata?.sub as string);
+  const userDisplayName =
+    userProfile?.displayName ||
+    userProfile?.username ||
+    (user?.user_metadata?.full_name as string) ||
+    (user?.user_metadata?.name as string) ||
+    (user?.user_metadata?.preferred_username as string) ||
+    user?.email;
 
-        const isWinnerMatch =
-          ann.winnerDiscordId === userDiscordId ||
-          (user?.email && ann.winnerDiscordId === user.email) ||
-          (user?.displayName && ann.winnerName === user.displayName);
+  const winningAnnouncement = announcements.find((ann) => {
+    if (ann.status !== "active") return false;
+    if (new Date().toISOString() >= ann.expiresAt) return false;
 
-        if (!isWinnerMatch) return false;
+    // Check if user has already created a ticket/claim for this event
+    const hasClaimed = claims.some(
+      (c) =>
+        c.eventId === ann.eventId &&
+        (c.discordId === userDiscordId || c.winnerName === ann.winnerName || c.discordId === ann.winnerDiscordId)
+    );
+    if (hasClaimed) return false;
 
-        // Check if user has already created a ticket/claim for this event
-        const hasClaimed = claims.some(
-          (c) =>
-            c.eventId === ann.eventId &&
-            (c.discordId === userDiscordId || c.winnerName === ann.winnerName)
-        );
+    // Match logged in user profile / OAuth identity
+    if (userDiscordId || userDisplayName || user?.email) {
+      const isMatch =
+        (userDiscordId && ann.winnerDiscordId === userDiscordId) ||
+        (user?.email && ann.winnerDiscordId === user.email) ||
+        (userDisplayName && ann.winnerName.toLowerCase() === userDisplayName.toLowerCase()) ||
+        (userProfile?.username && ann.winnerName.toLowerCase() === userProfile.username.toLowerCase());
+      if (isMatch) return true;
+    }
 
-        return !hasClaimed;
-      })
-    : null;
+    // Match local participant session if user registered on this browser
+    const localParticipants = loadLocalItems<EventParticipant>("participants");
+    const isLocalWinner = localParticipants.some(
+      (p) =>
+        p.eventId === ann.eventId &&
+        (p.discordId === ann.winnerDiscordId || p.displayName === ann.winnerName || p.username === ann.winnerName)
+    );
+    return isLocalWinner;
+  });
 
   const showWinnerPopup = Boolean(winningAnnouncement) && !isWinnerPopupClosed;
 

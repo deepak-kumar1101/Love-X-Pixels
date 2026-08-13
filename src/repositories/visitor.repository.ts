@@ -7,7 +7,13 @@ export class VisitorRepository extends BaseRepository<VisitorLog> {
   }
 
   async logVisit(visit: Omit<VisitorLog, "id">): Promise<string> {
-    return this.add(visit);
+    const payload = {
+      path: (visit as any).pagePath || (visit as any).path || "/",
+      referrer: visit.referrer || "direct",
+      timestamp: visit.timestamp || new Date().toISOString(),
+      uid: visit.uid || null,
+    };
+    return this.add(payload as any);
   }
 }
 
