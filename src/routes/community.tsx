@@ -7,6 +7,7 @@ import { Reveal } from "@/components/site/Reveal";
 import { Section } from "@/components/site/Section";
 import { SectionHeading } from "@/components/site/SectionHeading";
 import { ServerPreview } from "@/components/site/ServerPreview";
+import { DiscordVoiceWidget } from "@/components/site/DiscordVoiceWidget";
 import { communityPillars, communityStats } from "@/content/placeholders";
 import type { CommunityPillar } from "@/types/content";
 
@@ -89,6 +90,17 @@ function CommunityPage() {
             <PillarCard key={pillar.id} pillar={pillar} index={i} />
           ))}
         </div>
+      </Section>
+
+      <Section id="voice-widget" className="pt-0">
+        <SectionHeading
+          eyebrow="Live Voice Salons"
+          title="Active Voice Channels & VC Rooms"
+          description="See live speakers, active voice lounges, and member presence on LovePixels. Connect directly to join."
+        />
+        <Reveal className="mt-14">
+          <DiscordVoiceWidget />
+        </Reveal>
       </Section>
 
       <Section id="server-preview" className="pt-0">
