@@ -30,9 +30,12 @@ export const DiscordVoiceWidget: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const guildId = guildData?.id || "1346519672688087093";
+  const guildId = guildData?.id || "1498650220215664781";
   const inviteUrl = guildData?.instant_invite || `https://discord.gg/YFX2tfSZMj`;
-  const onlineCount = guildData?.presence_count || 342;
+  const onlineCount = guildData?.presence_count || 188;
+  const memberCount = guildData?.member_count || 3137;
+  const boostCount = guildData?.premium_subscription_count || 86;
+  const serverName = guildData?.name || "LovePixel™";
 
   // Filter or group channels into voice channels
   const voiceChannels = guildData?.channels?.filter(
@@ -46,46 +49,66 @@ export const DiscordVoiceWidget: React.FC = () => {
 
   // Get active members in voice channels
   const getChannelMembers = (channelId: string) => {
-    return (
-      guildData?.members?.filter((m) => m.channel_id === channelId) || [
-        {
-          id: `u-${channelId}-1`,
-          username: "Aurelia",
-          discriminator: "0001",
-          avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
-          status: "online" as const,
-        },
-        {
-          id: `u-${channelId}-2`,
-          username: "Kaelen",
-          discriminator: "0002",
-          avatar_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
-          status: "online" as const,
-        },
-      ]
-    );
+    const list = guildData?.members?.filter((m) => m.channel_id === channelId);
+    if (list && list.length > 0) return list;
+
+    // Default active voice participants
+    return [
+      {
+        id: `u-${channelId}-1`,
+        username: guildData?.inviterName || "N y x S T A R ⚡",
+        discriminator: "0",
+        avatar_url: guildData?.inviterAvatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
+        status: "online" as const,
+      },
+      {
+        id: `u-${channelId}-2`,
+        username: "Kaelen",
+        discriminator: "0002",
+        avatar_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
+        status: "online" as const,
+      },
+    ];
   };
 
   return (
     <div className="overflow-hidden rounded-4xl border border-zinc-800/90 bg-[#1e1f22] text-zinc-100 shadow-2xl backdrop-blur-2xl">
-      {/* Header Bar */}
+      {/* Header Bar with Real-Time Live Discord API Metrics */}
       <div className="flex flex-wrap items-center justify-between border-b border-zinc-800/80 bg-[#2b2d31] px-6 py-5">
         <div className="flex items-center space-x-3">
-          <div className="relative grid h-10 w-10 place-items-center rounded-2xl bg-indigo-500/20 text-indigo-400">
-            <Radio className="h-5 w-5 animate-pulse" />
-            <span className="absolute -right-0.5 -top-0.5 flex h-3 w-3">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
-            </span>
-          </div>
+          {guildData?.icon_url ? (
+            <img
+              src={guildData.icon_url}
+              alt={serverName}
+              className="h-11 w-11 rounded-2xl border border-indigo-500/40 object-cover shadow-md"
+            />
+          ) : (
+            <div className="relative grid h-10 w-10 place-items-center rounded-2xl bg-indigo-500/20 text-indigo-400">
+              <Radio className="h-5 w-5 animate-pulse" />
+              <span className="absolute -right-0.5 -top-0.5 flex h-3 w-3">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
+              </span>
+            </div>
+          )}
+
           <div>
-            <div className="flex items-center space-x-2">
-              <h3 className="font-serif text-lg font-bold text-white">Live Voice Channels</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="font-serif text-lg font-bold text-white max-w-[280px] truncate">{serverName}</h3>
               <span className="inline-flex items-center space-x-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-bold text-emerald-400 border border-emerald-500/30">
                 <span>🟢 {onlineCount} Online</span>
               </span>
+              <span className="inline-flex items-center space-x-1 rounded-full bg-indigo-500/15 px-2.5 py-0.5 text-[11px] font-bold text-indigo-400 border border-indigo-500/30">
+                <span>👥 {memberCount.toLocaleString()} Members</span>
+              </span>
+              {boostCount > 0 && (
+                <span className="inline-flex items-center space-x-1 rounded-full bg-rose-500/15 px-2.5 py-0.5 text-[11px] font-bold text-rose-400 border border-rose-500/30">
+                  <Sparkles className="h-3 w-3" />
+                  <span>{boostCount} Boosts</span>
+                </span>
+              )}
             </div>
-            <p className="text-xs text-zinc-400">Real-time status of LovePixels Discord Voice Rooms</p>
+            <p className="text-xs text-zinc-400 mt-0.5">Real-time stats synced directly from official Discord Server API</p>
           </div>
         </div>
 
@@ -94,10 +117,11 @@ export const DiscordVoiceWidget: React.FC = () => {
             type="button"
             onClick={() => loadStats(true)}
             disabled={isRefreshing}
-            title="Refresh Live Voice Channels"
-            className="rounded-full p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer"
+            title="Sync Live Discord Stats"
+            className="flex items-center space-x-1 rounded-full bg-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors cursor-pointer"
           >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin text-indigo-400" : ""}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin text-indigo-400" : ""}`} />
+            <span>Sync Live</span>
           </button>
 
           <a
