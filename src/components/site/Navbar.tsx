@@ -11,6 +11,8 @@ import {
   Bell,
   Sun,
   Moon,
+  Settings,
+  ArrowUpRight,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -38,6 +40,7 @@ export function Navbar() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
   const { user, userProfile, logout } = useAuth();
   const { isAdmin } = useRBAC();
@@ -147,29 +150,85 @@ export function Navbar() {
             </button>
 
             {user ? (
-              <div className="flex items-center space-x-2">
-                {isAdmin && (
-                  <Link
-                    to="/admin"
-                    className="hidden items-center space-x-1 rounded-full bg-rose-500/15 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-500/25 dark:text-rose-400 md:inline-flex"
-                  >
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    <span>Admin Panel</span>
-                  </Link>
-                )}
-                <div className="flex items-center space-x-2 rounded-full border border-border/80 bg-card/80 px-3 py-1 text-xs font-semibold text-foreground">
-                  <UserIcon className="h-3.5 w-3.5 text-rose-500" />
-                  <span className="max-w-[100px] truncate">
-                    {userProfile?.displayName || user.email?.split("@")[0]}
-                  </span>
-                </div>
+              <div className="relative">
                 <button
-                  onClick={() => logout()}
-                  title="Sign Out"
-                  className="rounded-full p-2 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500"
+                  type="button"
+                  onClick={() => setIsProfileMenuOpen((prev) => !prev)}
+                  className="relative grid h-9 w-9 place-items-center rounded-full border border-rose-500/40 bg-gradient-to-br from-rose-500/20 to-amber-500/20 p-0.5 text-foreground shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                  title="Profile Menu"
                 >
-                  <LogOut className="h-4 w-4" />
+                  {userProfile?.avatar_url || (user?.user_metadata?.avatar_url as string) ? (
+                    <img
+                      src={userProfile?.avatar_url || (user?.user_metadata?.avatar_url as string)}
+                      alt="Profile Avatar"
+                      className="h-full w-full rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-amber-500 text-white text-xs font-bold">
+                      {(userProfile?.displayName || user.email || "U")[0].toUpperCase()}
+                    </div>
+                  )}
                 </button>
+
+                <AnimatePresence>
+                  {isProfileMenuOpen && (
+                    <>
+                      {/* Backdrop for closing dropdown when clicking outside */}
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setIsProfileMenuOpen(false)}
+                      />
+
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                        className="absolute right-0 top-12 z-50 w-72 rounded-3xl border border-zinc-800/90 bg-zinc-950/95 p-5 shadow-2xl backdrop-blur-2xl text-white"
+                      >
+                        {/* Header text matching user photo */}
+                        <div>
+                          <p className="text-[11px] font-medium text-zinc-400">Logged in as:</p>
+                          <h4 className="mt-1 font-bold text-white text-lg tracking-wide max-w-[220px] truncate">
+                            {userProfile?.displayName || userProfile?.username || user.email?.split("@")[0] || "User"}
+                          </h4>
+                        </div>
+
+                        {/* Admin Panel Button (styled like Manage Subscription in photo) */}
+                        <div className="mt-4 space-y-2">
+                          {isAdmin && (
+                            <Link
+                              to="/admin"
+                              onClick={() => setIsProfileMenuOpen(false)}
+                              className="flex w-full items-center justify-between rounded-2xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm font-semibold text-blue-400 transition-all hover:bg-blue-500/20 active:scale-98"
+                            >
+                              <span>Admin Panel</span>
+                              <Settings className="h-4.5 w-4.5 text-blue-400" />
+                            </Link>
+                          )}
+                        </div>
+
+                        {/* Dashed Separator matching photo */}
+                        <div className="my-4 border-t border-dashed border-zinc-800/80" />
+
+                        {/* Logout Button matching photo */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProfileMenuOpen(false);
+                            logout();
+                          }}
+                          className="flex w-full items-center justify-between rounded-2xl border border-zinc-800/80 bg-zinc-900/60 px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-zinc-800 active:scale-98 cursor-pointer"
+                        >
+                          <span>Log out</span>
+                          <div className="grid h-6 w-6 place-items-center rounded-full bg-white text-zinc-950 shadow-xs">
+                            <ArrowUpRight className="h-3.5 w-3.5 stroke-[2.5]" />
+                          </div>
+                        </button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
               </div>
             ) : (
               <Magnetic className="hidden md:inline-flex" strength={0.22}>

@@ -1,7 +1,9 @@
 import React, { useState } from "react";
-import { X, Gift, CheckCircle, Ticket } from "lucide-react";
+import { X, Gift, CheckCircle, Ticket, Lock } from "lucide-react";
+import { toast } from "sonner";
 import type { WinnerAnnouncement } from "@/models/event-system.model";
 import { addFirestoreDoc } from "@/lib/firebase";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ClaimRewardModalProps {
   announcement: WinnerAnnouncement | null;
@@ -14,15 +16,20 @@ export const ClaimRewardModal: React.FC<ClaimRewardModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const [paymentMethod, setPaymentMethod] = useState<"UPI" | "PayPal" | "Crypto" | "Bank">("UPI");
-  const [accountDetails, setAccountDetails] = useState("");
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user, userProfile } = useAuth();
+  const authenticatedDiscordUserId = user?.id || user?.uid || userProfile?.discordId;
+  const isWinner = Boolean(authenticatedDiscordUserId && authenticatedDiscordUserId === announcement?.winnerDiscordId);
 
   if (!isOpen || !announcement) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isWinner) {
+      toast.error("Unauthorized: Only the verified winner can submit this claim ticket.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -30,6 +37,7 @@ export const ClaimRewardModal: React.FC<ClaimRewardModalProps> = ({
         eventId: announcement.eventId,
         winnerName: announcement.winnerName,
         discordId: announcement.winnerDiscordId,
+        winnerDiscordUserId: announcement.winnerDiscordId,
         eventName: announcement.eventName,
         prize: announcement.prizeWon,
         reason: "Reward Claim Ticket",

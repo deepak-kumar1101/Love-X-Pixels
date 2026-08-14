@@ -22,17 +22,19 @@ export class ParticipantRepository extends BaseRepository<EventParticipant> {
     return Array.from(map.values()).filter((r) => r.eventId === eventId);
   }
 
-  async isUserRegistered(eventId: string, discordId: string): Promise<boolean> {
+  async isUserRegistered(eventId: string, discordUserId: string): Promise<boolean> {
+    if (!eventId || !discordUserId) return false;
     const local = getCollectionItems<EventParticipant>("participants", []);
     const storedLocal = loadLocalItems<EventParticipant>("participants");
     const remote = await this.getAll([]);
-    const deterministicId = `${eventId}_${discordId}`;
+    const deterministicId = `${eventId}_${discordUserId}`;
 
     const combined = [...local, ...storedLocal, ...remote];
     return combined.some(
       (r) =>
         r.id === deterministicId ||
-        (r.eventId === eventId && (r.discordId === discordId || (r as any).uid === discordId))
+        (r.eventId === eventId &&
+          (r.discordUserId === discordUserId || r.discordId === discordUserId || (r as any).uid === discordUserId))
     );
   }
 }

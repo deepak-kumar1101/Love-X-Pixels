@@ -274,3 +274,38 @@
 ::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(180deg, rgba(239, 68, 68, 0.8), rgba(185, 28, 28, 0.8));
 }
+
+/* Custom Glassmorphism Toast & Message Styling */
+[data-sonner-toast] {
+  background: rgba(18, 18, 24, 0.88) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid rgba(244, 114, 182, 0.4) !important;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6), 0 0 20px rgba(244, 114, 182, 0.2) !important;
+  border-radius: 1.25rem !important;
+  color: #f8fafc !important;
+  font-family: var(--font-sans) !important;
+  padding: 1rem 1.25rem !important;
+}
+
+.dark [data-sonner-toast] {
+  background: rgba(15, 15, 22, 0.92) !important;
+  border: 1px solid rgba(251, 191, 36, 0.4) !important;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.8), 0 0 25px rgba(251, 191, 36, 0.25) !important;
+}
+
+.glass-message-card {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(244, 114, 182, 0.3);
+  box-shadow: 0 15px 35px -10px rgba(244, 114, 182, 0.15);
+}
+
+.dark .glass-message-card {
+  background: rgba(24, 24, 32, 0.75);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.5);
+}

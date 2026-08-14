@@ -220,9 +220,15 @@ export async function updateFirestoreDoc<T extends StoreRecord>(
 ): Promise<void> {
   const tableName = toTableName(collectionName);
 
-  // 1. Instantly update local store and notify subscribers
+  // 1. Instantly update local store and notify subscribers (with UPSERT support)
   const existing = getCollectionItems<T>(collectionName, []);
-  const updated = existing.map((item) => (item.id === id ? ({ ...item, ...data } as T) : item));
+  const foundIndex = existing.findIndex((item) => item.id === id);
+  let updated: T[];
+  if (foundIndex >= 0) {
+    updated = existing.map((item) => (item.id === id ? ({ ...item, ...data } as T) : item));
+  } else {
+    updated = [{ id, ...data } as unknown as T, ...existing];
+  }
   saveLocalItems(collectionName, updated);
   notifySubscribers(collectionName, updated);
 

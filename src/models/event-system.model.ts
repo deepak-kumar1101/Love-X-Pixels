@@ -21,12 +21,15 @@ export interface ExtendedCommunityEvent extends CommunityEvent {
 }
 
 export interface EventParticipant {
-  id: string;
+  id: string; // eventId_discordUserId
   eventId: string;
-  discordId: string;
-  username: string;
+  discordId: string; // Canonical Discord User ID
+  discordUserId: string; // Canonical Discord User ID
+  username: string; // Display username
+  discordUsername: string;
   displayName: string;
   avatar?: string;
+  discordAvatar?: string;
   joinedAt: string;
   status: "registered" | "attended" | "winner" | "disqualified";
 }
@@ -42,8 +45,10 @@ export interface EventNotification {
 export interface WinnerAnnouncement {
   id: string;
   eventId: string;
-  winnerDiscordId: string;
+  winnerDiscordId: string; // Canonical Discord User ID
+  winnerDiscordUserId: string;
   winnerName: string;
+  winnerUsername?: string;
   avatar?: string;
   eventName: string;
   prizeWon: string;
@@ -56,7 +61,8 @@ export interface WinnerAnnouncement {
 export interface WinnerRecord {
   id: string;
   eventId: string;
-  winnerDiscordId: string;
+  winnerDiscordId: string; // Canonical Discord User ID
+  winnerDiscordUserId: string;
   winnerName: string;
   avatar?: string;
   prize: string;
@@ -69,11 +75,13 @@ export interface RewardClaim {
   id: string;
   eventId: string;
   winnerName: string;
-  discordId: string;
+  discordId: string; // Canonical Discord User ID
+  winnerDiscordUserId: string;
   eventName: string;
   prize: string;
   reason: string;
   status: "pending" | "completed" | "rejected" | "processing";
+  ticketSent?: boolean;
   paymentMethod?: "UPI" | "PayPal" | "Crypto" | "Bank";
   accountDetails?: string;
   paymentDate?: string;

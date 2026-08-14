@@ -28,8 +28,8 @@ export class EventLifecycleService {
       user_metadata?: Record<string, unknown>;
     },
   ): Promise<{ success: boolean; message: string }> {
-    const discordId = user?.uid || user?.id;
-    if (!user || !discordId) {
+    const discordUserId = user?.id || user?.uid || (user as any)?.discordId || (user as any)?.discordUserId;
+    if (!user || !discordUserId) {
       return { success: false, message: "Authentication required. Please sign in with Discord." };
     }
 
@@ -43,8 +43,8 @@ export class EventLifecycleService {
       return { success: false, message: "This event has already ended." };
     }
 
-    // Backend Atomic Duplicate Entry Check — Deterministic ID (eventId_userId)
-    const isAlready = await participantRepository.isUserRegistered(event.id, discordId);
+    // Backend Atomic Duplicate Entry Check — Unique Key (eventId + discordUserId)
+    const isAlready = await participantRepository.isUserRegistered(event.id, discordUserId);
     if (isAlready) {
       return { success: false, message: "You have already entered this event." };
     }
@@ -67,15 +67,18 @@ export class EventLifecycleService {
 
     const avatar = user.photoURL || (user.user_metadata?.avatar_url as string) || undefined;
 
-    // Register participant with deterministic document ID to prevent simultaneous race conditions
-    const deterministicId = `${event.id}_${discordId}`;
+    // Register participant with deterministic document ID (eventId_discordUserId)
+    const deterministicId = `${event.id}_${discordUserId}`;
     const participantData: EventParticipant = {
       id: deterministicId,
       eventId: event.id,
-      discordId,
+      discordId: discordUserId,
+      discordUserId,
       username: user.email?.split("@")[0] || displayName,
+      discordUsername: displayName,
       displayName,
       avatar,
+      discordAvatar: avatar,
       joinedAt: new Date().toISOString(),
       status: "registered",
     };
@@ -93,7 +96,7 @@ export class EventLifecycleService {
     });
 
     // Award XP
-    await XPService.awardXP(user.uid || user.id || "", 150, `Registered for event: ${event.title}`);
+    await XPService.awardXP(discordUserId, 150, `Registered for event: ${event.title}`);
 
     // Notify if slots almost full
     if (newRemaining <= 3 && newRemaining > 0) {
@@ -159,6 +162,7 @@ export class EventLifecycleService {
     // Secure Random Selection from actual registered participants
     const randomIndex = Math.floor(Math.random() * participants.length);
     const winner = participants[randomIndex];
+    const winnerDiscordId = winner.discordUserId || winner.discordId;
 
     const now = new Date();
     // Exactly 24-hour announcement expiry
@@ -171,9 +175,11 @@ export class EventLifecycleService {
 
     const announcementData: Omit<WinnerAnnouncement, "id"> = {
       eventId: event.id,
-      winnerDiscordId: winner.discordId,
+      winnerDiscordId: winnerDiscordId,
+      winnerDiscordUserId: winnerDiscordId,
       winnerName,
-      avatar: winner.avatar,
+      winnerUsername: winner.username || winner.displayName,
+      avatar: winner.avatar || winner.discordAvatar,
       eventName: event.title,
       prizeWon,
       congratulationsMsg,
@@ -182,32 +188,32 @@ export class EventLifecycleService {
       status: "active",
     };
 
-    // 1. Create 24-hour Winner Announcement (Appears in Payouts -> Winners)
+    // 1. Create 24-hour Winner Announcement
     const annId = await winnerAnnouncementRepository.add(announcementData);
 
-    // 2. Store Permanent Winner Record in winnerHistory
+    // 2. Store Winner Record in winnerHistory as Pending
     await winnerHistoryRepository.add({
       eventId: event.id,
-      winnerDiscordId: winner.discordId,
+      winnerDiscordId: winnerDiscordId,
+      winnerDiscordUserId: winnerDiscordId,
       winnerName,
-      avatar: winner.avatar,
+      avatar: winner.avatar || winner.discordAvatar,
       prize: prizeWon,
       wonAt: now.toISOString(),
       participantsCount: participants.length,
     });
 
-    // 3. Store Permanent Record in Payouts collection (Hall of Fame)
-    await addFirestoreDoc("payouts", {
-      name: winnerName,
-      handle: `@${winner.username.toLowerCase()}`,
-      amount: prizeWon,
-      reason: `Event Winner: ${event.title}`,
-      paidAt: new Date().toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }),
-      proofImageUrl: winner.avatar || undefined,
+    // 3. Store initial Reward Pending entry in rewardClaims
+    await rewardClaimRepository.add({
+      eventId: event.id,
+      winnerName,
+      discordId: winnerDiscordId,
+      winnerDiscordUserId: winnerDiscordId,
+      eventName: event.title,
+      prize: prizeWon,
+      reason: "Reward Pending",
+      status: "pending",
+      createdAt: now.toISOString(),
     });
 
     // 4. Lock Event permanently to prevent duplicate winner generation
@@ -215,17 +221,22 @@ export class EventLifecycleService {
       status: "completed",
       winnerSelected: true,
       winnerSelectionStatus: "COMPLETED",
-      winnerId: winner.discordId,
+      winnerId: winnerDiscordId,
       winnerName,
-      winnerAvatar: winner.avatar,
+      winnerAvatar: winner.avatar || winner.discordAvatar,
     });
 
-    // 5. Broadcast community notification
+    // 5. Broadcast website notification strictly to the winner's Discord User ID
     await NotificationService.publishNotification({
-      title: "🏆 Winner Announced!",
-      message: `@${winnerName} won ${prizeWon} in ${event.title}!`,
+      title: "🎉 You have won!",
+      message: `Congratulations! You won ${prizeWon} in ${event.title}. Your reward is ready to be claimed. Claim your reward by creating a support ticket.`,
       type: "winner",
       link: "/payouts",
+      eventId: event.id,
+      eventName: event.title,
+      prize: prizeWon,
+      winnerDiscordId: winnerDiscordId,
+      winnerName,
     });
 
     return { id: annId, ...announcementData };

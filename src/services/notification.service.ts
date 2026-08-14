@@ -13,26 +13,38 @@ export interface AppNotification {
 export class NotificationService {
   /** Subscribe to realtime notifications */
   static subscribeNotifications(onUpdate: (notifications: AppNotification[]) => void): () => void {
-    const fallback: AppNotification[] = [
-      {
-        id: "1",
-        title: "🏆 Payout Winner Announced",
-        message: "Rahul won ₹500 in monthly Salons event!",
-        type: "winner",
-        link: "/payouts",
-        timestamp: new Date().toISOString(),
-      },
-      {
-        id: "2",
-        title: "✨ Live Salon Event Started",
-        message: "Join voice salon for tonight's listening room.",
-        type: "event",
-        link: "/events",
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-      },
-    ];
+    if (typeof window !== "undefined" && window.localStorage.getItem("lovepixels_notifications_cleared") === "true") {
+      onUpdate([]);
+    }
+    return subscribeToCollection<AppNotification>("notifications", [], onUpdate);
+  }
 
-    return subscribeToCollection<AppNotification>("notifications", fallback, onUpdate);
+  /** Clear all local notifications */
+  static clearNotifications(): void {
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("lovepixels_db_notifications", JSON.stringify([]));
+        window.localStorage.setItem("lovepixels_notifications_cleared", "true");
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
+  /** Dismiss a single notification by ID */
+  static dismissNotification(id: string): void {
+    try {
+      if (typeof window !== "undefined") {
+        const stored = window.localStorage.getItem("lovepixels_db_notifications");
+        if (stored) {
+          const parsed = JSON.parse(stored) as AppNotification[];
+          const filtered = parsed.filter((n) => n.id !== id);
+          window.localStorage.setItem("lovepixels_db_notifications", JSON.stringify(filtered));
+        }
+      }
+    } catch {
+      // Ignore
+    }
   }
 
   /** Publish notification to community */

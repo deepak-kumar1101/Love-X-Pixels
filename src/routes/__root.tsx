@@ -224,24 +224,11 @@ function RootContent() {
     return isLocalWinner;
   });
 
-  const showWinnerPopup = Boolean(winningAnnouncement) && !isWinnerPopupClosed;
-
   return (
     <>
       <Background />
       <LoadingScreen />
       {!isAdminPath && <Navbar />}
-
-      {/* Winner-Only Website Popup — Only displayed to the authenticated winning user */}
-      <WinnerCelebrationModal
-        isOpen={showWinnerPopup}
-        announcement={winningAnnouncement ?? null}
-        onClose={() => setIsWinnerPopupClosed(true)}
-        onClaimTicket={(ann) => {
-          setSelectedClaimAnnouncement(ann);
-          setIsClaimModalOpen(true);
-        }}
-      />
 
       {/* Claim Reward Ticket Flow */}
       <ClaimRewardModal

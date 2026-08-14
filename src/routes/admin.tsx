@@ -236,6 +236,8 @@ export function AdminDashboard() {
     liveMemberCount: 1420,
     activeVcCount: 38,
     discordInviteUrl: placeholders.discordInviteUrl,
+    discordGuildId: "1346519672688087093",
+    ticketWebhookUrl: "",
   });
 
   useEffect(() => {
@@ -2417,6 +2419,38 @@ export function AdminDashboard() {
           <h3 className="font-serif text-xl font-bold text-foreground">
             Global Settings & Feature Toggles
           </h3>
+          <div className="rounded-2xl border border-amber-400/40 bg-amber-500/10 p-5 space-y-2">
+            <h4 className="text-xs font-bold text-amber-500 uppercase tracking-wider">
+              Deep X Support Guild Integration
+            </h4>
+            <p className="text-xs text-muted-foreground">
+              Configure the Discord Server Guild ID where support tickets are created for event winners.
+            </p>
+            <div className="pt-2">
+              <label className="block text-xs font-bold text-foreground">Discord Guild ID</label>
+              <input
+                type="text"
+                value={settings.discordGuildId || "1346519672688087093"}
+                onChange={(e) => setSettings({ ...settings, discordGuildId: e.target.value })}
+                placeholder="e.g. 1346519672688087093"
+                className="mt-1 w-full max-w-md rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground"
+              />
+            </div>
+            <button
+              onClick={async () => {
+                if (typeof window !== "undefined") {
+                  window.localStorage.setItem("lovepixels_discord_guild_id", settings.discordGuildId || "");
+                }
+                await updateFirestoreDoc("settings", "global", settings);
+                logAuditAction("Updated Deep X Guild Settings", "settings", "global");
+                toast.success("Saved Guild ID Settings!");
+              }}
+              className="mt-2 inline-flex items-center rounded-xl bg-amber-500 px-4 py-2 text-xs font-bold text-black hover:bg-amber-400"
+            >
+              Save Guild ID Setting
+            </button>
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2">
             {[
               {
