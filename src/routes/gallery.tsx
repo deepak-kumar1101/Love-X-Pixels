@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { Download } from "lucide-react";
 
 import { PageHeader } from "@/components/site/PageHeader";
 import { Reveal } from "@/components/site/Reveal";
 import { Section } from "@/components/site/Section";
-import { LightboxModal } from "@/components/site/LightboxModal";
+import { LightboxModal, downloadImage } from "@/components/site/LightboxModal";
 import { galleryItems } from "@/content/placeholders";
 import { subscribeToCollection } from "@/lib/firebase";
 import type { GalleryItem } from "@/types/content";
@@ -104,6 +105,24 @@ function GalleryPage() {
                   loading="lazy"
                   className="h-full w-full object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.06]"
                 />
+
+                {/* Direct Card Download Button */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    downloadImage(
+                      item.src,
+                      `${(item.caption || item.alt).toLowerCase().replace(/[^a-z0-9]/g, "-")}.jpg`
+                    );
+                  }}
+                  title="Download Image"
+                  className="absolute right-4 top-4 z-10 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-2 text-xs font-semibold text-white/90 opacity-0 backdrop-blur-md transition-all duration-300 hover:bg-rose-500 hover:text-white group-hover:opacity-100 shadow-md cursor-pointer hover:scale-105"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Download</span>
+                </button>
+
                 <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-6 py-5 text-sm font-medium text-white opacity-0 transition-all duration-300 group-hover:opacity-100">
                   {item.caption || item.alt}
                 </figcaption>
