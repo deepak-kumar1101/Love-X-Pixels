@@ -242,55 +242,69 @@ export function PayoutsPage() {
           description="Every payout is backed by transparent transaction receipts and verified badges."
         />
 
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {winners.map((winner, i) => (
-            <Reveal key={winner.id} delay={i * 0.06}>
-              <div className="glass group relative flex flex-col justify-between overflow-hidden rounded-3xl p-6 transition-all hover:-translate-y-1">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="grid h-12 w-12 place-items-center rounded-full bg-accent font-serif text-lg font-bold text-accent-foreground">
-                        {winner.name.charAt(0)}
+        {winners.length === 0 ? (
+          <div className="glass-strong my-8 rounded-4xl p-10 text-center">
+            <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-amber-500/15 text-amber-500">
+              <Trophy className="h-6 w-6" />
+            </span>
+            <h3 className="mt-4 font-serif text-2xl font-bold text-foreground">
+              No Payout Receipts Yet
+            </h3>
+            <p className="mx-auto mt-2 max-w-md text-xs text-muted-foreground">
+              Verified payout receipts and payment proof cards will appear here as soon as event reward claim tickets are processed and approved by Admin.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {winners.map((winner, i) => (
+              <Reveal key={winner.id} delay={i * 0.06}>
+                <div className="glass group relative flex flex-col justify-between overflow-hidden rounded-3xl p-6 transition-all hover:-translate-y-1">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="grid h-12 w-12 place-items-center rounded-full bg-accent font-serif text-lg font-bold text-accent-foreground">
+                          {winner.name.charAt(0)}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-foreground">{winner.name}</h4>
+                          <p className="text-xs text-muted-foreground">{winner.handle}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-bold text-foreground">{winner.name}</h4>
-                        <p className="text-xs text-muted-foreground">{winner.handle}</p>
-                      </div>
-                    </div>
-                    <span className="inline-flex items-center space-x-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                      <CheckCircle2 className="h-3 w-3" />
-                      <span>Verified</span>
-                    </span>
-                  </div>
-
-                  <div className="mt-4 rounded-2xl border border-border/50 bg-card/60 p-4">
-                    <p className="text-xs text-muted-foreground">Event / Reason:</p>
-                    <p className="font-semibold text-foreground text-sm">{winner.reason}</p>
-                    <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-2">
-                      <span className="text-xs text-muted-foreground">Prize Amount:</span>
-                      <span className="font-serif text-lg font-bold text-rose-500">
-                        {winner.amount}
+                      <span className="inline-flex items-center space-x-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 className="h-3 w-3" />
+                        <span>Verified</span>
                       </span>
                     </div>
+
+                    <div className="mt-4 rounded-2xl border border-border/50 bg-card/60 p-4">
+                      <p className="text-xs text-muted-foreground">Event / Reason:</p>
+                      <p className="font-semibold text-foreground text-sm">{winner.reason}</p>
+                      <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-2">
+                        <span className="text-xs text-muted-foreground">Prize Amount:</span>
+                        <span className="font-serif text-lg font-bold text-rose-500">
+                          {winner.amount}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Paid: {winner.paidAt}</span>
+                    {winner.proofImageUrl && (
+                      <button
+                        onClick={() => setLightboxSrc(winner.proofImageUrl || null)}
+                        className="inline-flex items-center space-x-1 rounded-xl bg-accent/80 px-3 py-1.5 font-semibold text-foreground hover:bg-rose-500 hover:text-white transition-colors"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>View Proof</span>
+                      </button>
+                    )}
                   </div>
                 </div>
-
-                <div className="mt-5 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Paid: {winner.paidAt}</span>
-                  {winner.proofImageUrl && (
-                    <button
-                      onClick={() => setLightboxSrc(winner.proofImageUrl || null)}
-                      className="inline-flex items-center space-x-1 rounded-xl bg-accent/80 px-3 py-1.5 font-semibold text-foreground hover:bg-rose-500 hover:text-white transition-colors"
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      <span>View Proof</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            </Reveal>
-          ))}
-        </div>
+              </Reveal>
+            ))}
+          </div>
+        )}
       </Section>
 
       {/* 6. VERIFIED WINNER REVIEWS */}
@@ -311,44 +325,58 @@ export function PayoutsPage() {
           </button>
         </div>
 
-        <div className="mt-8 grid gap-6 md:grid-cols-3">
-          {reviews.map((review, i) => (
-            <Reveal key={review.id} delay={i * 0.08}>
-              <div className="glass flex h-full flex-col justify-between rounded-3xl p-6">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="grid h-10 w-10 place-items-center rounded-full bg-rose-500/15 font-bold text-rose-500">
-                        {review.name.charAt(0)}
+        {reviews.length === 0 ? (
+          <div className="glass-strong my-8 rounded-4xl p-10 text-center">
+            <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-rose-500/15 text-rose-500">
+              <MessageSquarePlus className="h-6 w-6" />
+            </span>
+            <h3 className="mt-4 font-serif text-2xl font-bold text-foreground">
+              No Member Reviews Yet
+            </h3>
+            <p className="mx-auto mt-2 max-w-md text-xs text-muted-foreground">
+              Recipient reviews will appear here once community members share feedback on completed payouts.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-8 grid gap-6 md:grid-cols-3">
+            {reviews.map((review, i) => (
+              <Reveal key={review.id} delay={i * 0.08}>
+                <div className="glass flex h-full flex-col justify-between rounded-3xl p-6">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="grid h-10 w-10 place-items-center rounded-full bg-rose-500/15 font-bold text-rose-500">
+                          {review.name.charAt(0)}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-foreground text-sm">{review.name}</h4>
+                          <p className="text-[11px] text-muted-foreground">{review.handle}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-bold text-foreground text-sm">{review.name}</h4>
-                        <p className="text-[11px] text-muted-foreground">{review.handle}</p>
+                      <div className="flex text-amber-400">
+                        {[...Array(review.rating || 5)].map((_, idx) => (
+                          <Star key={idx} className="h-3.5 w-3.5 fill-current" />
+                        ))}
                       </div>
                     </div>
-                    <div className="flex text-amber-400">
-                      {[...Array(review.rating || 5)].map((_, idx) => (
-                        <Star key={idx} className="h-3.5 w-3.5 fill-current" />
-                      ))}
-                    </div>
+
+                    <p className="mt-4 text-xs italic leading-relaxed text-muted-foreground">
+                      "{review.quote}"
+                    </p>
                   </div>
 
-                  <p className="mt-4 text-xs italic leading-relaxed text-muted-foreground">
-                    "{review.quote}"
-                  </p>
+                  <div className="mt-4 flex items-center justify-between border-t border-border/40 pt-3 text-[11px]">
+                    <span className="inline-flex items-center space-x-1 font-bold text-emerald-500">
+                      <CheckCircle2 className="h-3 w-3" />
+                      <span>Verified Recipient</span>
+                    </span>
+                    <span className="text-muted-foreground">Verified</span>
+                  </div>
                 </div>
-
-                <div className="mt-4 flex items-center justify-between border-t border-border/40 pt-3 text-[11px]">
-                  <span className="inline-flex items-center space-x-1 font-bold text-emerald-500">
-                    <CheckCircle2 className="h-3 w-3" />
-                    <span>Verified Recipient</span>
-                  </span>
-                  <span className="text-muted-foreground">Verified</span>
-                </div>
-              </div>
-            </Reveal>
-          ))}
-        </div>
+              </Reveal>
+            ))}
+          </div>
+        )}
       </Section>
     </>
   );

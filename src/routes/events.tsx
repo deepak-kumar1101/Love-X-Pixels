@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { Calendar } from "lucide-react";
 import { toast } from "sonner";
 
 import { EventCard } from "@/components/site/EventCard";
@@ -223,21 +224,35 @@ function EventsPage() {
                   : "Live Community Events"
           }
         />
-        <div className="mt-10 grid gap-6 md:grid-cols-2">
-          {filteredEvents.map((event, i) => (
-            <Reveal key={event.id} delay={i * 0.08}>
-              <EventCard
-                event={event}
-                onParticipate={handleParticipate}
-                onNotify={handleNotify}
-                onViewDetails={(e) => {
-                  setSelectedEvent(e);
-                  setIsDetailsOpen(true);
-                }}
-              />
-            </Reveal>
-          ))}
-        </div>
+        {filteredEvents.length === 0 ? (
+          <div className="glass-strong my-8 rounded-4xl p-10 text-center">
+            <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-rose-500/15 text-rose-500">
+              <Calendar className="h-6 w-6" />
+            </span>
+            <h3 className="mt-4 font-serif text-2xl font-bold text-foreground">
+              No Community Events Scheduled
+            </h3>
+            <p className="mx-auto mt-2 max-w-md text-xs text-muted-foreground">
+              No events are currently scheduled for this category. Server administrators can create and publish new community events from the Admin Panel.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-10 grid gap-6 md:grid-cols-2">
+            {filteredEvents.map((event, i) => (
+              <Reveal key={event.id} delay={i * 0.08}>
+                <EventCard
+                  event={event}
+                  onParticipate={handleParticipate}
+                  onNotify={handleNotify}
+                  onViewDetails={(e) => {
+                    setSelectedEvent(e);
+                    setIsDetailsOpen(true);
+                  }}
+                />
+              </Reveal>
+            ))}
+          </div>
+        )}
       </Section>
     </>
   );

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowUpRight, CheckCircle2 } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Handshake } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/site/PageHeader";
@@ -82,34 +82,48 @@ function PartnersPage() {
       />
 
       <Section className="pt-0">
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {list.map((partner, i) => (
-            <Reveal key={partner.id} delay={i * 0.06}>
-              <a
-                href={partner.href ?? partner.discordUrl ?? "#"}
-                target="_blank"
-                rel="noreferrer"
-                className="glass lift group flex h-full flex-col rounded-4xl p-8"
-              >
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
-                  <div className="min-w-0">
-                    <p className="eyebrow">{partner.category}</p>
-                    <h3 className="mt-2 truncate font-serif text-xl font-bold">{partner.name}</h3>
+        {list.length === 0 ? (
+          <div className="glass-strong my-8 rounded-4xl p-10 text-center">
+            <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-rose-500/15 text-rose-500">
+              <Handshake className="h-6 w-6" />
+            </span>
+            <h3 className="mt-4 font-serif text-2xl font-bold text-foreground">
+              No Partner Communities Listed
+            </h3>
+            <p className="mx-auto mt-2 max-w-md text-xs text-muted-foreground">
+              No partner communities are currently featured. Server administrators can add partner communities from the Admin Panel.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {list.map((partner, i) => (
+              <Reveal key={partner.id} delay={i * 0.06}>
+                <a
+                  href={partner.href ?? partner.discordUrl ?? "#"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="glass lift group flex h-full flex-col rounded-4xl p-8"
+                >
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+                    <div className="min-w-0">
+                      <p className="eyebrow">{partner.category}</p>
+                      <h3 className="mt-2 truncate font-serif text-xl font-bold">{partner.name}</h3>
+                    </div>
+                    <ArrowUpRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-300 group-hover:-translate-y-1 group-hover:translate-x-1 group-hover:text-primary" />
                   </div>
-                  <ArrowUpRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-300 group-hover:-translate-y-1 group-hover:translate-x-1 group-hover:text-primary" />
-                </div>
-                <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                  {partner.description}
-                </p>
-                {partner.memberCount ? (
-                  <p className="mt-6 text-xs font-semibold text-rose-500">
-                    {partner.memberCount} members
+                  <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                    {partner.description}
                   </p>
-                ) : null}
-              </a>
-            </Reveal>
-          ))}
-        </div>
+                  {partner.memberCount ? (
+                    <p className="mt-6 text-xs font-semibold text-rose-500">
+                      {partner.memberCount} members
+                    </p>
+                  ) : null}
+                </a>
+              </Reveal>
+            ))}
+          </div>
+        )}
       </Section>
 
       <Section className="pt-0">

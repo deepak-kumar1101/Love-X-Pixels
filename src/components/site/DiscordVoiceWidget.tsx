@@ -38,37 +38,19 @@ export const DiscordVoiceWidget: React.FC = () => {
   const serverName = guildData?.name || "LovePixel™";
 
   // Filter or group channels into voice channels
-  const voiceChannels = guildData?.channels?.filter(
-    (c) => c.name.toLowerCase().includes("voice") || c.name.toLowerCase().includes("vc") || c.name.toLowerCase().includes("salon") || c.name.toLowerCase().includes("lounge") || c.name.toLowerCase().includes("gaming")
-  ) || [
-    { id: "v1", name: "🎤 Voice Salon — Listening Room", position: 1 },
-    { id: "v2", name: "🎮 Gaming VC Hub — Valorant & BGMI", position: 2 },
-    { id: "v3", name: "☕ Chill VC Lounge — Everyday Talk", position: 3 },
-    { id: "v4", name: "🎵 Midnight Music Session", position: 4 },
-  ];
+  const voiceChannels =
+    guildData?.channels && guildData.channels.length > 0
+      ? guildData.channels
+      : [
+          { id: "1499408445537783989", name: "🎵 Music VC", position: 1 },
+          { id: "v1", name: "🌸 voice-salon-1", position: 2 },
+          { id: "v2", name: "🎮 gaming-vc-hub", position: 3 },
+          { id: "v3", name: "☕ chill-lounge", position: 4 },
+        ];
 
   // Get active members in voice channels
   const getChannelMembers = (channelId: string) => {
-    const list = guildData?.members?.filter((m) => m.channel_id === channelId);
-    if (list && list.length > 0) return list;
-
-    // Default active voice participants
-    return [
-      {
-        id: `u-${channelId}-1`,
-        username: guildData?.inviterName || "N y x S T A R ⚡",
-        discriminator: "0",
-        avatar_url: guildData?.inviterAvatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
-        status: "online" as const,
-      },
-      {
-        id: `u-${channelId}-2`,
-        username: "Kaelen",
-        discriminator: "0002",
-        avatar_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
-        status: "online" as const,
-      },
-    ];
+    return guildData?.members?.filter((m) => m.channel_id === channelId) || [];
   };
 
   return (
@@ -108,7 +90,9 @@ export const DiscordVoiceWidget: React.FC = () => {
                 </span>
               )}
             </div>
-            <p className="text-xs text-zinc-400 mt-0.5">Real-time stats synced directly from official Discord Server API</p>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              Live widget synced directly from Discord API: <code className="text-indigo-300 font-mono text-[11px]">https://discord.com/api/guilds/1498650220215664781/widget.json</code>
+            </p>
           </div>
         </div>
 
@@ -153,41 +137,52 @@ export const DiscordVoiceWidget: React.FC = () => {
                   <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-indigo-500/15 text-indigo-400">
                     <Volume2 className="h-4 w-4" />
                   </div>
-                  <h4 className="font-bold text-sm text-white truncate">{vc.name}</h4>
+                  <div>
+                    <h4 className="font-bold text-sm text-white truncate">{vc.name}</h4>
+                    <span className="text-[10px] text-zinc-400 font-semibold">
+                      {members.length > 0 ? `🟢 ${members.length} Seated` : "Empty channel"}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Animated Equalizer Sound Wave */}
-                <div className="flex items-end space-x-0.5 h-4">
-                  {[0, 1, 2, 3].map((b) => (
-                    <motion.span
-                      key={b}
-                      className="w-1 rounded-full bg-indigo-400"
-                      animate={{ height: ["4px", "14px", "6px", "16px", "4px"] }}
-                      transition={{
-                        duration: 1.2,
-                        repeat: Infinity,
-                        delay: b * 0.15,
-                        ease: "easeInOut",
-                      }}
-                    />
-                  ))}
-                </div>
+                {members.length > 0 && (
+                  <div className="flex items-end space-x-0.5 h-4">
+                    {[0, 1, 2, 3].map((b) => (
+                      <motion.span
+                        key={b}
+                        className="w-1 rounded-full bg-indigo-400"
+                        animate={{ height: ["4px", "14px", "6px", "16px", "4px"] }}
+                        transition={{
+                          duration: 1.2,
+                          repeat: Infinity,
+                          delay: b * 0.15,
+                          ease: "easeInOut",
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Members in VC */}
               <div className="mt-4 flex items-center justify-between border-t border-zinc-800/80 pt-3">
-                <div className="flex items-center -space-x-2 overflow-hidden">
-                  {members.map((member) => (
-                    <div key={member.id} className="relative group/user" title={`@${member.username}`}>
-                      <img
-                        src={member.avatar_url}
-                        alt={member.username}
-                        className="h-8 w-8 rounded-full border-2 border-[#2b2d31] object-cover shadow-sm transition-transform group-hover/user:scale-110"
-                      />
-                      <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 border border-[#2b2d31]" />
-                    </div>
-                  ))}
-                </div>
+                {members.length > 0 ? (
+                  <div className="flex items-center -space-x-2 overflow-hidden">
+                    {members.map((member) => (
+                      <div key={member.id} className="relative group/user" title={`@${member.username}`}>
+                        <img
+                          src={member.avatar_url}
+                          alt={member.username}
+                          className="h-8 w-8 rounded-full border-2 border-[#2b2d31] object-cover shadow-sm transition-transform group-hover/user:scale-110"
+                        />
+                        <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 border border-[#2b2d31]" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-xs italic text-zinc-500">No members currently in channel</span>
+                )}
 
                 <a
                   href={inviteUrl}

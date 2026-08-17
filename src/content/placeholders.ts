@@ -1,13 +1,3 @@
-/**
- * PLACEHOLDER CONTENT — display copy only.
- *
- * There is no data layer here: these are static presentation constants used to
- * render the UI. Replace each export with a Firebase (Firestore) read that
- * returns the same typed shape from `src/types/content.ts`.
- *
- * Example future wiring:
- *   const staff = await getDocs(collection(db, "staff"));
- */
 import type {
   CommunityEvent,
   CommunityPillar,
@@ -21,13 +11,21 @@ import type {
   StaffMember,
 } from "@/types/content";
 
-
+import hero from "@/assets/hero.jpg";
+import hero2 from "@/assets/hero-2.jpg";
+import hero3 from "@/assets/hero-3.jpg";
+import event1 from "@/assets/event-1.jpg";
+import event2 from "@/assets/event-2.jpg";
+import event3 from "@/assets/event-3.jpg";
+import gallery1 from "@/assets/gallery-1.jpg";
+import gallery3 from "@/assets/gallery-3.jpg";
+import gallery4 from "@/assets/gallery-4.jpg";
 
 /** TODO(firebase): collection "stats" */
 export const communityStats: CommunityStat[] = [
-  { id: "members", label: "Members", value: "24.8k", caption: "and blooming" },
-  { id: "online", label: "Online daily", value: "3.2k", caption: "average" },
-  { id: "events", label: "Events hosted", value: "740", caption: "since 2021" },
+  { id: "members", label: "Members", value: "3.5k+", caption: "and blooming" },
+  { id: "online", label: "Online daily", value: "700", caption: "average" },
+  { id: "events", label: "Events hosted", value: "100+", caption: "since 2025" },
   { id: "payouts", label: "Rewarded", value: "₹8.4L", caption: "to creators" },
 ];
 
@@ -78,12 +76,23 @@ export const communityPillars: CommunityPillar[] = [
 ];
 
 export const staffMembers: StaffMember[] = [];
+
 export const communityEvents: CommunityEvent[] = [];
+
 export const partners: Partner[] = [];
-export const payoutTiers: PayoutTier[] = [];
+
+export const payoutTiers: PayoutTier[] = [
+  { id: "t1", rank: "Top Event Champion", amount: "₹2,500", perks: ["Custom Role", "Verified Badge", "Featured Wall"] },
+  { id: "t2", rank: "Voice Salon Host", amount: "₹1,500", perks: ["Nitro Month", "VIP Channel Access"] },
+  { id: "t3", rank: "Creative Contributor", amount: "₹1,000", perks: ["Gallery Spotlight", "Role Color"] },
+];
+
 export const payoutRecords: PayoutRecord[] = [];
+
 export const payoutWinners: PayoutWinner[] = [];
+
 export const payoutReviews: PayoutReview[] = [];
+
 export const galleryItems: GalleryItem[] = [];
 
 export const placeholders = {

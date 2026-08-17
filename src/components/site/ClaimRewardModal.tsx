@@ -1,40 +1,40 @@
 import React, { useState } from "react";
-import { X, Gift, CheckCircle, Ticket, Lock } from "lucide-react";
+import { X, CheckCircle, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import type { WinnerAnnouncement } from "@/models/event-system.model";
-import { addFirestoreDoc } from "@/lib/firebase";
+import { addFirestoreDoc, loadLocalItems, saveLocalItems } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 
 interface ClaimRewardModalProps {
   announcement: WinnerAnnouncement | null;
   isOpen: boolean;
   onClose: () => void;
+  onClaimCompleted?: (announcementId: string) => void;
 }
 
 export const ClaimRewardModal: React.FC<ClaimRewardModalProps> = ({
   announcement,
   isOpen,
   onClose,
+  onClaimCompleted,
 }) => {
   const { user, userProfile } = useAuth();
-  const authenticatedDiscordUserId = user?.id || user?.uid || userProfile?.discordId;
-  const isWinner = Boolean(authenticatedDiscordUserId && authenticatedDiscordUserId === announcement?.winnerDiscordId);
+  const [paymentMethod, setPaymentMethod] = useState<"UPI" | "PayPal" | "Crypto" | "Bank">("UPI");
+  const [accountDetails, setAccountDetails] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   if (!isOpen || !announcement) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!isWinner) {
-      toast.error("Unauthorized: Only the verified winner can submit this claim ticket.");
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
       await addFirestoreDoc("rewardClaims", {
         eventId: announcement.eventId,
+        announcementId: announcement.id,
         winnerName: announcement.winnerName,
         discordId: announcement.winnerDiscordId,
         winnerDiscordUserId: announcement.winnerDiscordId,
@@ -46,12 +46,30 @@ export const ClaimRewardModal: React.FC<ClaimRewardModalProps> = ({
         status: "pending",
         createdAt: new Date().toISOString(),
       });
+
+      // Save claimed announcement ID to local store so popup is permanently hidden for this announcement
+      const claimedList = loadLocalItems<string>("claimed_announcements") || [];
+      if (!claimedList.includes(announcement.id)) {
+        saveLocalItems("claimed_announcements", [...claimedList, announcement.id]);
+      }
+      if (onClaimCompleted) {
+        onClaimCompleted(announcement.id);
+      }
+
       setIsSubmitted(true);
+      toast.success("🎉 Reward claim ticket submitted successfully!");
     } catch (err) {
       console.warn("Failed to submit claim ticket:", err);
+      toast.error("Failed to submit claim ticket. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleFinish = () => {
+    setIsSubmitted(false);
+    setAccountDetails("");
+    onClose();
   };
 
   return (
@@ -61,7 +79,7 @@ export const ClaimRewardModal: React.FC<ClaimRewardModalProps> = ({
       <div className="relative w-full max-w-lg rounded-3xl border border-rose-200/50 bg-background/95 p-6 shadow-2xl backdrop-blur-xl dark:border-rose-900/40 dark:bg-zinc-900/95 sm:p-8">
         <button
           onClick={onClose}
-          className="absolute right-5 top-5 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-rose-500/10 hover:text-foreground"
+          className="absolute right-5 top-5 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-rose-500/10 hover:text-foreground cursor-pointer"
         >
           <X className="h-5 w-5" />
         </button>
@@ -80,8 +98,8 @@ export const ClaimRewardModal: React.FC<ClaimRewardModalProps> = ({
               been prefilled and sent to LovePixels Staff. Payout will be processed shortly.
             </p>
             <button
-              onClick={onClose}
-              className="mt-6 rounded-xl bg-rose-500 px-6 py-2.5 text-xs font-semibold text-white shadow-md hover:opacity-90"
+              onClick={handleFinish}
+              className="mt-6 rounded-xl bg-rose-500 px-6 py-2.5 text-xs font-semibold text-white shadow-md hover:opacity-90 cursor-pointer"
             >
               Done
             </button>
@@ -155,7 +173,7 @@ export const ClaimRewardModal: React.FC<ClaimRewardModalProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 py-3 text-xs font-bold text-white shadow-md hover:opacity-95 disabled:opacity-50"
+                className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 py-3 text-xs font-bold text-white shadow-md hover:opacity-95 disabled:opacity-50 cursor-pointer"
               >
                 {isSubmitting ? "Submitting Claim..." : "Submit Reward Claim Ticket"}
               </button>

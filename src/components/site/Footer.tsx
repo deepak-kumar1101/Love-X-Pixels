@@ -76,7 +76,7 @@ export function Footer() {
             <p className="eyebrow mb-4">Elsewhere</p>
             <ul className="grid gap-2.5 text-sm text-muted-foreground">
               {/* TODO(firebase): social links from remote config */}
-              {["Discord", "Instagram", "Pinterest", "Contact"].map((item) => (
+              {["Discord", "Instagram", "Contact"].map((item) => (
                 <li key={item}>
                   <a
                     href={item === "Discord" ? "https://discord.gg/YFX2tfSZMj" : "#"}

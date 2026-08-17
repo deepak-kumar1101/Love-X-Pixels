@@ -1,5 +1,10 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { getCollectionItems } from "@/lib/firebase";
+import {
+  getCollectionItems,
+  addFirestoreDoc,
+  updateFirestoreDoc,
+  deleteFirestoreDoc,
+} from "@/lib/firebase";
 
 export abstract class BaseRepository<T extends { id: string }> {
   protected collectionName: string;
@@ -45,6 +50,10 @@ export abstract class BaseRepository<T extends { id: string }> {
     if (this.cache.has(id)) {
       return this.cache.get(id)!;
     }
+    const localItems = getCollectionItems<T>(this.collectionName, []);
+    const localFound = localItems.find((i) => i.id === id);
+    if (localFound) return localFound;
+
     if (!isSupabaseConfigured) {
       return null;
     }
@@ -68,16 +77,12 @@ export abstract class BaseRepository<T extends { id: string }> {
   /** Create new document */
   async add(item: Omit<T, "id">, customId?: string): Promise<string> {
     const generatedId = customId || crypto.randomUUID();
-    const payload = { id: generatedId, ...item };
+    const payload = { id: generatedId, ...item } as unknown as T;
 
-    if (isSupabaseConfigured) {
-      const { error } = await supabase.from(this.tableName).insert(payload);
-      if (error)
-        console.warn(`[BaseRepository] Error inserting into ${this.tableName}:`, error.message);
-    }
+    // Save to local store and notify subscribers instantly
+    await addFirestoreDoc(this.collectionName, payload as any);
 
-    const mockItem = payload as unknown as T;
-    this.cache.set(generatedId, mockItem);
+    this.cache.set(generatedId, payload);
     return generatedId;
   }
 
@@ -89,14 +94,7 @@ export abstract class BaseRepository<T extends { id: string }> {
 
   /** Update document */
   async update(id: string, data: Partial<Omit<T, "id">>): Promise<void> {
-    if (isSupabaseConfigured) {
-      const { error } = await supabase
-        .from(this.tableName)
-        .update(data as Record<string, unknown>)
-        .eq("id", id);
-      if (error)
-        console.warn(`[BaseRepository] Error updating ${id} in ${this.tableName}:`, error.message);
-    }
+    await updateFirestoreDoc(this.collectionName, id, data as any);
     if (this.cache.has(id)) {
       this.cache.set(id, { ...this.cache.get(id)!, ...data });
     }
@@ -104,14 +102,7 @@ export abstract class BaseRepository<T extends { id: string }> {
 
   /** Delete document */
   async delete(id: string): Promise<void> {
-    if (isSupabaseConfigured) {
-      const { error } = await supabase.from(this.tableName).delete().eq("id", id);
-      if (error)
-        console.warn(
-          `[BaseRepository] Error deleting ${id} from ${this.tableName}:`,
-          error.message,
-        );
-    }
+    await deleteFirestoreDoc(this.collectionName, id);
     this.cache.delete(id);
   }
 

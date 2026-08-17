@@ -47,6 +47,22 @@ function getLocalStorageKey(collectionName: string): string {
   return `lovepixels_db_${collectionName}`;
 }
 
+// Cross-tab synchronization via window storage events
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key && e.key.startsWith("lovepixels_db_")) {
+      const collectionName = e.key.replace("lovepixels_db_", "");
+      try {
+        const items = e.newValue ? JSON.parse(e.newValue) : [];
+        memoryStore.set(collectionName, items);
+        notifySubscribers(collectionName, items);
+      } catch (err) {
+        console.warn(`[LocalStore] Storage sync error on ${collectionName}:`, err);
+      }
+    }
+  });
+}
+
 export function loadLocalItems<T extends StoreRecord>(collectionName: string): T[] {
   if (typeof window === "undefined") return [];
   try {

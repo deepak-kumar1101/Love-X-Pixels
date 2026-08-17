@@ -181,47 +181,27 @@ function RootContent() {
     };
   }, []);
 
-  // Compute WINNER-ONLY Popup logic
-  // Only the winning user receives the reward claim popup.
-  const userDiscordId = user?.id || user?.uid || userProfile?.discordId || (user?.user_metadata?.sub as string);
-  const userDisplayName =
-    userProfile?.displayName ||
-    userProfile?.username ||
-    (user?.user_metadata?.full_name as string) ||
-    (user?.user_metadata?.name as string) ||
-    (user?.user_metadata?.preferred_username as string) ||
-    user?.email;
+  const [claimedAnnouncementIds, setClaimedAnnouncementIds] = useState<string[]>(() =>
+    loadLocalItems<string>("claimed_announcements") || []
+  );
 
-  const winningAnnouncement = announcements.find((ann) => {
+  // Active Winner Announcement Popup logic
+  // Displays on website reload and enter UNLESS the reward has already been claimed!
+  const activeAnnouncement = announcements.find((ann) => {
     if (ann.status !== "active") return false;
-    if (new Date().toISOString() >= ann.expiresAt) return false;
+    if (ann.expiresAt && new Date().toISOString() >= ann.expiresAt) return false;
+    if (claimedAnnouncementIds.includes(ann.id)) return false;
 
-    // Check if user has already created a ticket/claim for this event
+    // Check if reward claim ticket exists in rewardClaims collection
     const hasClaimed = claims.some(
       (c) =>
-        c.eventId === ann.eventId &&
-        (c.discordId === userDiscordId || c.winnerName === ann.winnerName || c.discordId === ann.winnerDiscordId)
+        c.eventId === ann.eventId ||
+        (c as any).announcementId === ann.id ||
+        (c.winnerName === ann.winnerName && c.status === "completed")
     );
     if (hasClaimed) return false;
 
-    // Match logged in user profile / OAuth identity
-    if (userDiscordId || userDisplayName || user?.email) {
-      const isMatch =
-        (userDiscordId && ann.winnerDiscordId === userDiscordId) ||
-        (user?.email && ann.winnerDiscordId === user.email) ||
-        (userDisplayName && ann.winnerName.toLowerCase() === userDisplayName.toLowerCase()) ||
-        (userProfile?.username && ann.winnerName.toLowerCase() === userProfile.username.toLowerCase());
-      if (isMatch) return true;
-    }
-
-    // Match local participant session if user registered on this browser
-    const localParticipants = loadLocalItems<EventParticipant>("participants");
-    const isLocalWinner = localParticipants.some(
-      (p) =>
-        p.eventId === ann.eventId &&
-        (p.discordId === ann.winnerDiscordId || p.displayName === ann.winnerName || p.username === ann.winnerName)
-    );
-    return isLocalWinner;
+    return true;
   });
 
   return (
@@ -230,11 +210,26 @@ function RootContent() {
       <LoadingScreen />
       {!isAdminPath && <Navbar />}
 
+      {/* Automatic Winner Celebration Popup on load/reload */}
+      <WinnerCelebrationModal
+        isOpen={!!activeAnnouncement && !isWinnerPopupClosed}
+        announcement={activeAnnouncement || null}
+        onClose={() => setIsWinnerPopupClosed(true)}
+        onClaimTicket={(ann) => {
+          setSelectedClaimAnnouncement(ann);
+          setIsClaimModalOpen(true);
+        }}
+      />
+
       {/* Claim Reward Ticket Flow */}
       <ClaimRewardModal
         announcement={selectedClaimAnnouncement}
         isOpen={isClaimModalOpen}
         onClose={() => setIsClaimModalOpen(false)}
+        onClaimCompleted={(claimedId) => {
+          setClaimedAnnouncementIds((prev) => [...prev, claimedId]);
+          setIsWinnerPopupClosed(true);
+        }}
       />
 
       <main className="min-h-screen">

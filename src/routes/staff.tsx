@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { Users } from "lucide-react";
 
 import { PageHeader } from "@/components/site/PageHeader";
 import { Reveal } from "@/components/site/Reveal";
@@ -92,28 +93,46 @@ function StaffPage() {
         description="A small team of people who answer quickly, listen carefully and treat the community like a room they live in too."
       />
 
-      {rankGroups.map((group) => {
-        const members = list.filter((m) => m.rank === group.rank);
-        if (!members.length) return null;
-
-        return (
-          <Section key={group.rank} className="py-10 md:py-14">
-            <SectionHeading
-              align="left"
-              eyebrow="Team tier"
-              title={group.title}
-              description={group.description}
-            />
-            <div className={`mt-10 grid gap-6 ${group.columns}`}>
-              {members.map((member, i) => (
-                <Reveal key={member.id} delay={i * 0.06} className="h-full">
-                  <StaffCard member={member} />
-                </Reveal>
-              ))}
+      {list.length === 0 ? (
+        <Section className="py-12">
+          <Reveal>
+            <div className="glass-strong rounded-4xl p-10 text-center">
+              <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-rose-500/15 text-rose-500">
+                <Users className="h-6 w-6" />
+              </span>
+              <h3 className="mt-4 font-serif text-2xl font-bold text-foreground">
+                No Staff Members Listed
+              </h3>
+              <p className="mx-auto mt-2 max-w-md text-xs text-muted-foreground">
+                No staff team members have been added yet. Server administrators can add and manage staff roles from the Admin Panel.
+              </p>
             </div>
-          </Section>
-        );
-      })}
+          </Reveal>
+        </Section>
+      ) : (
+        rankGroups.map((group) => {
+          const members = list.filter((m) => m.rank === group.rank);
+          if (!members.length) return null;
+
+          return (
+            <Section key={group.rank} className="py-10 md:py-14">
+              <SectionHeading
+                align="left"
+                eyebrow="Team tier"
+                title={group.title}
+                description={group.description}
+              />
+              <div className={`mt-10 grid gap-6 ${group.columns}`}>
+                {members.map((member, i) => (
+                  <Reveal key={member.id} delay={i * 0.06} className="h-full">
+                    <StaffCard member={member} />
+                  </Reveal>
+                ))}
+              </div>
+            </Section>
+          );
+        })
+      )}
 
       {/* Application Section */}
       <Section className="pt-0">
