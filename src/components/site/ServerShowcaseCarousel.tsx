@@ -201,7 +201,7 @@ export const ServerShowcaseCarousel: React.FC<ServerShowcaseCarouselProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-serif text-lg font-bold text-foreground">
-                  Server Showcase Carousel
+                  Server Showcase
                 </span>
                 <span className="rounded-full bg-rose-500/15 px-2.5 py-0.5 text-xs font-bold text-rose-500">
                   {currentIndex + 1} / {slides.length}
