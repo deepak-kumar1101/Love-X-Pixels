@@ -5,6 +5,7 @@
  * 1. Image uploads never fail with "Bucket not found" (graceful Data URL fallback).
  * 2. Adding/editing events, staff, winners, gallery, partners, and reviews instantly updates
  *    the UI and persists locally as well as syncing with Supabase.
+ * 3. Bidirectional camelCase <-> snake_case translation for Supabase Postgres compatibility.
  */
 
 import { supabase, isSupabaseConfigured, uploadStorageFile, deleteStorageFile } from "./supabase";
@@ -31,6 +32,38 @@ const collectionToTableMap: Record<string, string> = {
 
 export function toTableName(collectionName: string): string {
   return collectionToTableMap[collectionName] ?? collectionName.replace(/([A-Z])/g, "_$1").toLowerCase();
+}
+
+// ─── Key Conversion Helpers (camelCase <-> snake_case) ──────────────────────
+
+function camelToSnake(str: string): string {
+  return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+}
+
+function snakeToCamel(str: string): string {
+  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+}
+
+export function keysToSnakeCase<T>(obj: any): any {
+  if (Array.isArray(obj)) return obj.map(keysToSnakeCase);
+  if (obj !== null && typeof obj === "object" && obj.constructor === Object) {
+    return Object.keys(obj).reduce((acc: any, key: string) => {
+      acc[camelToSnake(key)] = keysToSnakeCase(obj[key]);
+      return acc;
+    }, {});
+  }
+  return obj;
+}
+
+export function keysToCamelCase<T>(obj: any): any {
+  if (Array.isArray(obj)) return obj.map(keysToCamelCase);
+  if (obj !== null && typeof obj === "object" && obj.constructor === Object) {
+    return Object.keys(obj).reduce((acc: any, key: string) => {
+      acc[snakeToCamel(key)] = keysToCamelCase(obj[key]);
+      return acc;
+    }, {});
+  }
+  return obj;
 }
 
 // ─── Realtime & LocalStorage Persistence Engine ─────────────────────────────
@@ -134,13 +167,13 @@ export function subscribeToCollection<T extends StoreRecord>(
 
   // 2. Fetch remote Supabase dataset if configured (only runs in browser)
   if (isSupabaseConfigured && typeof window !== "undefined") {
-    // Fire-and-forget fetch for initial remote data
+    // Fetch initial remote data
     supabase
       .from(tableName)
       .select("*")
       .then(({ data, error }) => {
         if (!error && data && data.length > 0) {
-          const remoteItems = data as unknown as T[];
+          const remoteItems = keysToCamelCase(data) as T[];
           const localUserItems = loadLocalItems<T>(collectionName);
 
           const mergedMap = new Map<string, T>();
@@ -153,7 +186,7 @@ export function subscribeToCollection<T extends StoreRecord>(
           notifySubscribers(collectionName, mergedList);
         }
       })
-      .catch(() => {/* silent — no Supabase tables is fine */});
+      .catch(() => {/* silent */});
 
     // Only create ONE realtime channel per collection — reuse if already exists
     if (!activeChannels.has(collectionName)) {
@@ -164,7 +197,7 @@ export function subscribeToCollection<T extends StoreRecord>(
             try {
               const { data } = await supabase.from(tableName).select("*");
               if (data && data.length > 0) {
-                const remoteItems = data as unknown as T[];
+                const remoteItems = keysToCamelCase(data) as T[];
                 const localUserItems = loadLocalItems<T>(collectionName);
                 const mergedMap = new Map<string, T>();
 
@@ -218,11 +251,14 @@ export async function addFirestoreDoc<T extends StoreRecord>(
   // 2. Insert into Supabase in background
   if (isSupabaseConfigured) {
     try {
-      const { error } = await supabase.from(tableName).insert(payload);
+      const supabasePayload = keysToSnakeCase(payload);
+      const { error } = await supabase.from(tableName).insert(supabasePayload);
       if (error) {
         console.warn(`[Supabase] Insert notice on ${tableName}:`, error.message);
       }
-    } catch {/* silent */}
+    } catch (err) {
+      console.warn(`[Supabase] Insert exception on ${tableName}:`, err);
+    }
   }
 
   return id;
@@ -251,14 +287,17 @@ export async function updateFirestoreDoc<T extends StoreRecord>(
   // 2. Update Supabase in background
   if (isSupabaseConfigured) {
     try {
+      const supabasePayload = keysToSnakeCase(data);
       const { error } = await supabase
         .from(tableName)
-        .update(data as Record<string, unknown>)
+        .update(supabasePayload)
         .eq("id", id);
       if (error) {
         console.warn(`[Supabase] Update notice on ${tableName}:`, error.message);
       }
-    } catch {/* silent */}
+    } catch (err) {
+      console.warn(`[Supabase] Update exception on ${tableName}:`, err);
+    }
   }
 }
 
@@ -279,7 +318,9 @@ export async function deleteFirestoreDoc(collectionName: string, id: string): Pr
       if (error) {
         console.warn(`[Supabase] Delete notice on ${tableName}:`, error.message);
       }
-    } catch {/* silent */}
+    } catch (err) {
+      console.warn(`[Supabase] Delete exception on ${tableName}:`, err);
+    }
   }
 }
 

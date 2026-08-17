@@ -300,3 +300,34 @@ CREATE POLICY "Public Write Announcements" ON public.announcements FOR ALL USING
 CREATE POLICY "Public Write Settings" ON public.settings FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Write VisitorLogs" ON public.visitor_logs FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Write AuditLogs" ON public.audit_logs FOR ALL USING (true) WITH CHECK (true);
+
+-- ====================================================================
+-- ENABLE REALTIME BROADCASTING ON ALL TABLES
+-- ====================================================================
+ALTER PUBLICATION supabase_realtime ADD TABLE public.staff;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.events;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.participants;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.winner_announcements;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.winner_history;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.reward_claims;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.payouts;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.reviews;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.gallery;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.partners;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.announcements;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.settings;
+
+-- ====================================================================
+-- CREATE STORAGE BUCKETS FOR UPLOADED MEDIA
+-- ====================================================================
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('lovepixels', 'lovepixels', true),
+       ('gallery', 'gallery', true),
+       ('staff', 'staff', true),
+       ('events', 'events', true)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "Public Read Storage" ON storage.objects FOR SELECT USING (true);
+CREATE POLICY "Public Write Storage" ON storage.objects FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public Update Storage" ON storage.objects FOR UPDATE WITH CHECK (true);
+CREATE POLICY "Public Delete Storage" ON storage.objects FOR DELETE USING (true);
